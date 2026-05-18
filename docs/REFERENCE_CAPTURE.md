@@ -44,6 +44,10 @@ The wrapper writes fresh xemu captures to
 `dist/nehe_reference/captures/xemu_verified` and comparison sheets to
 `dist/nehe_reference/captures/compare`.
 
+The Xbox build/capture helpers prefer the devkitPro MSYS2 shell at
+`C:\devkitPro\msys2\usr\bin\bash.exe`. A generic `C:\msys64` shell may have
+the right executable name but the wrong nxdk/devkit environment.
+
 To run the lower-level capture helper directly, build and collect the Xbox
 release artifacts first:
 
@@ -85,5 +89,24 @@ powershell -ExecutionPolicy Bypass -File .\tools\capture_nehe_frame_sweep.ps1 -S
 
 The sweep writes PNGs and a `manifest.json` under
 `dist/nehe_reference/captures/xemu_frames/<label>`.
+
+For the standard cube/display-list regression set, use the regression wrapper.
+It runs a fixed-time xemu sweep, stages the frames into a normal capture set,
+and generates strict verified comparison sheets:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_regression_set.ps1
+```
+
+By default this checks lessons `5,6,7,8,12` at `2000 ms`, writes staged
+captures to `dist/nehe_reference/captures/xemu_regression_2000`, and refreshes
+the comparison artifacts in `dist/nehe_reference/captures/compare`.
+
+To regenerate comparison sheets from an existing fixed-time sweep without
+recapturing xemu frames, pass the original sweep label:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_regression_set.ps1 -SkipSweep -Label regression_05_06_07_08_12_2000ms
+```
 
 Captured output is written under `dist/nehe_reference/captures`.
