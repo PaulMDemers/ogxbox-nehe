@@ -77,6 +77,34 @@ function Get-MainWindowHandle {
     throw "No xemu window handle for process $($Process.Id)"
 }
 
+function Set-XemuCaptureWindow {
+    param([IntPtr]$Handle)
+
+    [XemuCapture]::ShowWindow($Handle, [XemuCapture]::SW_RESTORE) | Out-Null
+    [XemuCapture]::SetWindowPos($Handle, [XemuCapture]::HWND_TOPMOST, 20, 20, 800, 600, [XemuCapture]::SWP_SHOWWINDOW) | Out-Null
+    [XemuCapture]::SetForegroundWindow($Handle) | Out-Null
+}
+
+function Test-CaptureLooksLikeXemu {
+    param([System.Drawing.Bitmap]$Bitmap)
+
+    $samples = 0
+    $total = 0.0
+    for ($y = 0; $y -lt $Bitmap.Height; $y += 16) {
+        for ($x = 0; $x -lt $Bitmap.Width; $x += 16) {
+            $pixel = $Bitmap.GetPixel($x, $y)
+            $total += ($pixel.R + $pixel.G + $pixel.B) / 3.0
+            $samples++
+        }
+    }
+
+    if ($samples -eq 0) {
+        return $false
+    }
+
+    return (($total / $samples) -lt 130.0)
+}
+
 function Capture-XemuIso {
     param(
         [string]$Iso,
@@ -95,14 +123,10 @@ function Capture-XemuIso {
     $proc = Start-Process -FilePath $xemuExe -ArgumentList $args -WorkingDirectory $xemuRoot -PassThru
     try {
         $handle = Get-MainWindowHandle -Process $proc
-        [XemuCapture]::ShowWindow($handle, [XemuCapture]::SW_RESTORE) | Out-Null
-        [XemuCapture]::SetWindowPos($handle, [XemuCapture]::HWND_TOPMOST, 80, 80, 640, 480, [XemuCapture]::SWP_SHOWWINDOW) | Out-Null
-        [XemuCapture]::SetForegroundWindow($handle) | Out-Null
+        Set-XemuCaptureWindow -Handle $handle
         Start-Sleep -Milliseconds ([int]($DelaySeconds * 1000))
-        [XemuCapture]::ShowWindow($handle, [XemuCapture]::SW_RESTORE) | Out-Null
-        [XemuCapture]::SetWindowPos($handle, [XemuCapture]::HWND_TOPMOST, 80, 80, 640, 480, [XemuCapture]::SWP_SHOWWINDOW) | Out-Null
-        [XemuCapture]::SetForegroundWindow($handle) | Out-Null
-        Start-Sleep -Milliseconds 500
+        Set-XemuCaptureWindow -Handle $handle
+        Start-Sleep -Milliseconds 750
 
         $rect = New-Object XemuCapture+RECT
         [XemuCapture]::GetClientRect($handle, [ref]$rect) | Out-Null
@@ -118,6 +142,14 @@ function Capture-XemuIso {
         try {
             $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutPath) | Out-Null
+            if (-not (Test-CaptureLooksLikeXemu -Bitmap $bitmap)) {
+                Set-XemuCaptureWindow -Handle $handle
+                Start-Sleep -Milliseconds 750
+                $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
+            }
+            if (-not (Test-CaptureLooksLikeXemu -Bitmap $bitmap)) {
+                throw "Capture does not look like the xemu framebuffer; refusing to save desktop/window-manager content."
+            }
             $bitmap.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
             Write-Host "Captured $OutPath"
         } finally {

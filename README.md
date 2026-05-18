@@ -9,7 +9,7 @@ This repository contains two implementations of lessons 1 through 12:
 - `111_nehe_nxgl_*` through `122_nehe_nxgl_*`: GL-style ports that build on
   NXGL from a sibling checkout.
 - `123_nehe_pb_*` through `134_nehe_pb_*`: PBKit/native ports used as a direct
-  renderer comparison.
+  renderer comparison and visual baseline.
 
 `110_nehe_nxgl_demo_disk` remains as shared source for the NXGL standalone
 lessons, but it is not part of the default release build.
@@ -52,6 +52,8 @@ lessons.
 - [`docs/RELEASE.md`](docs/RELEASE.md): release packaging and verification.
 - [`docs/REFERENCE_CAPTURE.md`](docs/REFERENCE_CAPTURE.md): Windows/xemu visual
   comparison workflow.
+- [`docs/PBKIT_BASELINE.md`](docs/PBKIT_BASELINE.md): how the PBKit lesson
+  family is used as the native-renderer reference.
 - [`docs/release_layout.md`](docs/release_layout.md): generated artifact layout.
 
 ## Attribution

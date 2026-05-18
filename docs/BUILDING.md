@@ -36,6 +36,15 @@ make -C 116_nehe_nxgl_06_texture_mapping
 make -C 128_nehe_pb_06_texture_mapping
 ```
 
+The PBKit lesson family is kept as a reference baseline. Build matching NXGL and
+PBKit lesson numbers when checking whether a rendering issue belongs to NXGL or
+to shared lesson data:
+
+```sh
+make -C 117_nehe_nxgl_07_filters_lighting
+make -C 129_nehe_pb_07_filters_lighting
+```
+
 ## Release Artifacts
 
 ```sh

@@ -18,8 +18,10 @@ include $(NXGL_DIR)/nxgl.mk
 ## PBKit Lessons
 
 `123_nehe_pb_*` through `134_nehe_pb_*` render directly through the native PBKit
-helper layer in `common_nehe/`. They are useful as a visual baseline when
-comparing NXGL behavior.
+helper layer in `common_nehe/`. They are intentionally kept as reference
+implementations, not as a second feature surface. Their job is to provide a
+native-renderer baseline when comparing NXGL behavior against the original
+Windows NeHe output and xemu captures.
 
 ## Shared Code
 
