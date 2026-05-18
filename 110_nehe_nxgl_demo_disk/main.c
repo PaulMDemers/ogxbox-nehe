@@ -591,6 +591,11 @@ static void init_texture_crate_filters(Lesson *lesson)
     lesson->textures[1] = upload_texture(NEHE_ASSET_CRATE_W, NEHE_ASSET_CRATE_H, nehe_asset_crate_rgba, GL_LINEAR);
 }
 
+static void init_texture_crate_linear(Lesson *lesson)
+{
+    lesson->textures[0] = upload_texture(NEHE_ASSET_CRATE_W, NEHE_ASSET_CRATE_H, nehe_asset_crate_rgba, GL_LINEAR);
+}
+
 static void init_texture_glass(Lesson *lesson)
 {
     lesson->textures[0] = upload_texture(NEHE_ASSET_GLASS_W, NEHE_ASSET_GLASS_H, nehe_asset_glass_rgba, GL_LINEAR);
@@ -967,6 +972,55 @@ static void render_15(Lesson *lesson, float t)
     draw_textured_skull_quads(x, y, rot);
 }
 
+static void setup_lesson_16_fog(float t)
+{
+    static const GLenum modes[3] = { GL_EXP, GL_EXP2, GL_LINEAR };
+    GLfloat fog_color[] = { 0.50f, 0.50f, 0.50f, 1.0f };
+    int mode = ((int)(t / 2.5f)) % 3;
+
+    glEnable(GL_FOG);
+    glFogi(GL_FOG_MODE, modes[mode]);
+    glFogfv(GL_FOG_COLOR, fog_color);
+    glFogf(GL_FOG_DENSITY, 0.16f);
+    glHint(GL_FOG_HINT, GL_DONT_CARE);
+    glFogf(GL_FOG_START, 3.8f);
+    glFogf(GL_FOG_END, 9.2f);
+}
+
+static void draw_fogged_crate_gl(Lesson *lesson, float x, float z, float angle)
+{
+    glLoadIdentity();
+    glTranslatef(x, 0.0f, z - 5.8f);
+    glRotatef(angle, 1.0f, 1.0f, 0.0f);
+    glScalef(0.62f, 0.62f, 0.62f);
+    glBindTexture(GL_TEXTURE_2D, lesson->textures[0]);
+    draw_cube(true);
+}
+
+static void render_16(Lesson *lesson, float t)
+{
+    GLfloat light_pos[] = { 0.0f, 0.0f, 2.0f, 1.0f };
+    GLfloat diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float angle = t * 42.0f;
+
+    glClearColor(0.50f, 0.50f, 0.50f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    setup_lesson_16_fog(t);
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_COLOR_MATERIAL);
+    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    draw_fogged_crate_gl(lesson, -1.25f, 0.0f, angle);
+    draw_fogged_crate_gl(lesson, 0.0f, -1.45f, angle);
+    draw_fogged_crate_gl(lesson, 1.25f, -2.9f, angle);
+}
+
 static Lesson lessons[] = {
     {"NeHe 01 - OpenGL Window", "Clear/context setup", NULL, render_01, shutdown_default, {0}, {0}},
     {"NeHe 02 - First Polygons", "Triangle and quad", NULL, render_02, shutdown_default, {0}, {0}},
@@ -983,6 +1037,7 @@ static Lesson lessons[] = {
     {"NeHe 13 - Bitmap Fonts", "Animated bitmap text", NULL, render_13, shutdown_default, {0}, {0}},
     {"NeHe 14 - Outline Fonts", "Spinning outline text", NULL, render_14, shutdown_default, {0}, {0}},
     {"NeHe 15 - Texture Outline Fonts", "Textured outline symbol", init_lights_texture, render_15, shutdown_default, {0}, {0}},
+    {"NeHe 16 - Cool Looking Fog", "Fog over textured crates", init_texture_crate_linear, render_16, shutdown_default, {0}, {0}},
 };
 
 static int lesson_count(void)

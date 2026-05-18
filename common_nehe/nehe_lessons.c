@@ -46,7 +46,8 @@ static const char *titles[NEHE_LESSON_COUNT] = {
     "NeHe 12 - display lists",
     "NeHe 13 - bitmap fonts",
     "NeHe 14 - outline fonts",
-    "NeHe 15 - texture mapped outline fonts"
+    "NeHe 15 - texture mapped outline fonts",
+    "NeHe 16 - cool looking fog"
 };
 
 static const char *details[NEHE_LESSON_COUNT] = {
@@ -64,7 +65,8 @@ static const char *details[NEHE_LESSON_COUNT] = {
     "Original cube texture repeated stack",
     "Animated bitmap-style text",
     "3D outline-style text",
-    "Texture mapped outline symbol"
+    "Texture mapped outline symbol",
+    "Fog over textured crates"
 };
 
 static int clamp_lesson(int lesson)
@@ -461,6 +463,68 @@ static void lesson_15(float t)
     draw_textured_skull_native(x, y, rot);
 }
 
+static float fog_factor_for_mode(int mode, float distance)
+{
+    const float density = 0.16f;
+    const float start = 3.8f;
+    const float end = 9.2f;
+
+    if (mode == 0) {
+        return expf(-density * distance);
+    }
+    if (mode == 1) {
+        float f = density * distance;
+        return expf(-(f * f));
+    }
+    return fmaxf(0.0f, fminf(1.0f, (end - distance) / (end - start)));
+}
+
+static N3Color fogged_lit_color(N3Vec3 normal, float angle, float distance, int mode)
+{
+    N3Color fog = { 0.50f, 0.50f, 0.50f, 1.0f };
+    N3Vec3 rotated = rotate_axis_angle(normal, angle, 1.0f, 1.0f, 0.0f);
+    float diffuse = rotated.z > 0.0f ? rotated.z : 0.0f;
+    float lit = 0.22f + diffuse * 0.78f;
+    float factor = fog_factor_for_mode(mode, distance);
+
+    return (N3Color){
+        fog.r + (lit - fog.r) * factor,
+        fog.g + (lit - fog.g) * factor,
+        fog.b + (lit - fog.b) * factor,
+        1.0f
+    };
+}
+
+static void draw_fogged_crate_native(float x, float z, float angle, int mode)
+{
+    static const N3Vec3 normals[6] = {
+        { 0.0f, 1.0f, 0.0f }, { 0.0f,-1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f },
+        { 0.0f, 0.0f,-1.0f }, {-1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f },
+    };
+    N3Color colors[6];
+    float distance = -(z - 5.8f);
+
+    for (int i = 0; i < 6; ++i) {
+        colors[i] = fogged_lit_color(normals[i], angle, distance, mode);
+    }
+    n3_draw_textured_cube_axis_angle_face_colors(x, 0.0f, z, 0.62f, angle, 1.0f, 1.0f, 0.0f, colors);
+}
+
+static void lesson_16(float t)
+{
+    int mode = ((int)(t / 2.5f)) % 3;
+    float angle = t * 42.0f * NEHE_DEG_TO_RAD;
+
+    n3_bind_texture(&crate_texture);
+    n3_set_camera(0.0f, 0.0f, -5.8f, 0.0f, 0.0f, 0.0f);
+    n3_set_depth(true, true);
+    n3_set_cull(true);
+    draw_fogged_crate_native(-1.25f, 0.0f, angle, mode);
+    draw_fogged_crate_native(0.0f, -1.45f, angle, mode);
+    draw_fogged_crate_native(1.25f, -2.9f, angle, mode);
+    n3_set_cull(false);
+}
+
 void nehe_lesson_render(int lesson, float t)
 {
     n3_set_projection(NEHE_FOV_Y_DEGREES, NEHE_NEAR_Z, NEHE_FAR_Z);
@@ -482,6 +546,7 @@ void nehe_lesson_render(int lesson, float t)
     case 12: lesson_13(t); break;
     case 13: lesson_14(t); break;
     case 14: lesson_15(t); break;
+    case 15: lesson_16(t); break;
     }
 }
 
@@ -503,5 +568,12 @@ bool nehe_lesson_blend_enabled(int lesson)
 
 uint32_t nehe_lesson_clear_color(int lesson)
 {
-    return clamp_lesson(lesson) == 0 ? 0x00020A16 : 0x00070B14;
+    lesson = clamp_lesson(lesson);
+    if (lesson == 0) {
+        return 0x00020A16;
+    }
+    if (lesson == 15) {
+        return 0x007F7F7F;
+    }
+    return 0x00070B14;
 }

@@ -19,7 +19,7 @@ $captureScript = Join-Path $PSScriptRoot "capture_nehe_xemu.ps1"
 $labels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts"
+    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog"
 )
 
 function Convert-ToTimeList {
