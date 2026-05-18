@@ -29,8 +29,8 @@ function Convert-ToMsysPath {
 
 function Find-Bash {
     $candidates = @(
-        "C:\msys64\usr\bin\bash.exe",
-        "C:\devkitPro\msys2\usr\bin\bash.exe"
+        "C:\devkitPro\msys2\usr\bin\bash.exe",
+        "C:\msys64\usr\bin\bash.exe"
     )
     foreach ($candidate in $candidates) {
         if (Test-Path $candidate) {
