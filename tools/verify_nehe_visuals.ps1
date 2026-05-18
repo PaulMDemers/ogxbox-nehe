@@ -3,9 +3,12 @@ param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
     [double]$DelaySeconds = 10.0,
+    [ValidateRange(1,10)]
+    [int]$LaunchAttempts = 3,
     [string]$CaptureSetName = "xemu_verified",
     [switch]$SkipBuild,
     [switch]$SkipCapture,
+    [switch]$DebugRejectedCaptures,
     [switch]$AllowWarnings
 )
 
@@ -50,11 +53,17 @@ if (-not $SkipBuild) {
 }
 
 if (-not $SkipCapture) {
-    & (Join-Path $PSScriptRoot "capture_nehe_xemu.ps1") `
-        -Set $Set `
-        -Lessons $Lessons `
-        -DelaySeconds $DelaySeconds `
-        -OutputSetName $CaptureSetName
+    $captureArgs = @{
+        Set = $Set
+        Lessons = $Lessons
+        DelaySeconds = $DelaySeconds
+        LaunchAttempts = $LaunchAttempts
+        OutputSetName = $CaptureSetName
+    }
+    if ($DebugRejectedCaptures) {
+        $captureArgs.DebugRejectedCaptures = $true
+    }
+    & (Join-Path $PSScriptRoot "capture_nehe_xemu.ps1") @captureArgs
 }
 
 $lessonInts = foreach ($lessonToken in $Lessons) {

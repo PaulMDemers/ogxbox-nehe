@@ -35,6 +35,11 @@ Use comma-separated lesson lists when narrowing a run:
 powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_visuals.ps1 -SkipBuild -Lessons 5,6,7,12
 ```
 
+The xemu capture path uses the emulator window handle and retries a failed
+capture in a fresh xemu process. If a run is flaky, increase
+`-LaunchAttempts` and add `-DebugRejectedCaptures` to save rejected
+PrintWindow/screen frames next to the intended output.
+
 The wrapper writes fresh xemu captures to
 `dist/nehe_reference/captures/xemu_verified` and comparison sheets to
 `dist/nehe_reference/captures/compare`.

@@ -1,11 +1,14 @@
 param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
-    [int[]]$Lessons = @(5,6,7,8,12),
+    [string[]]$Lessons = @("5","6","7","8","12"),
     [string[]]$Times = @("0","1000","2000","3000","4000","5000","6000"),
     [double]$DelaySeconds = 8.0,
+    [ValidateRange(1,10)]
+    [int]$LaunchAttempts = 3,
     [string]$Label = "frame_sweep",
     [string]$NxdkDir = "",
+    [switch]$DebugRejectedCaptures,
     [switch]$SkipBuild
 )
 
@@ -43,6 +46,31 @@ function Convert-ToTimeList {
     }
     if ($out.Count -eq 0) {
         throw "Pass at least one fixed time in milliseconds."
+    }
+    return $out
+}
+
+function Convert-ToLessonList {
+    param([string[]]$Values)
+
+    $out = @()
+    foreach ($value in $Values) {
+        foreach ($part in ($value -split ",")) {
+            if ([string]::IsNullOrWhiteSpace($part)) {
+                continue
+            }
+            $lesson = 0
+            if (-not [int]::TryParse($part.Trim(), [ref]$lesson)) {
+                throw "Invalid lesson number: $part"
+            }
+            if ($lesson -lt 1 -or $lesson -gt $labels.Count) {
+                throw "Unsupported lesson number: $lesson"
+            }
+            $out += $lesson
+        }
+    }
+    if ($out.Count -eq 0) {
+        throw "Pass at least one lesson number."
     }
     return $out
 }
@@ -101,15 +129,9 @@ function Get-AppName {
     $label = $labels[$Lesson - 1]
     if ($SetName -eq "nxgl") {
         $appNumber = if ($Lesson -le 12) { 110 + $Lesson } else { 200 + $Lesson }
-        if ($Lesson -le 12) {
-            return ("{0}_nxgl_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
-        }
         return ("{0}_nehe_nxgl_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
     }
     $appNumber = if ($Lesson -le 12) { 122 + $Lesson } else { 300 + $Lesson }
-    if ($Lesson -le 12) {
-        return ("{0}_pb_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
-    }
     return ("{0}_nehe_pb_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
 }
 
@@ -157,23 +179,30 @@ $sets = switch ($Set) {
     default { @("nxgl","pb") }
 }
 $timeList = Convert-ToTimeList $Times
+$lessonList = Convert-ToLessonList $Lessons
 
 New-Item -ItemType Directory -Force -Path $outRoot | Out-Null
 $results = @()
 
 foreach ($setName in $sets) {
-    foreach ($lesson in $Lessons) {
+    foreach ($lesson in $lessonList) {
         $appName = Get-AppName $setName $lesson
         $lessonDir = Join-Path $outRoot ("{0}_{1:D2}" -f $setName, $lesson)
         New-Item -ItemType Directory -Force -Path $lessonDir | Out-Null
 
         foreach ($time in $timeList) {
             Invoke-MsysBuild $appName $time
-            & $captureScript `
-                -Set $setName `
-                -Lessons @($lesson) `
-                -DelaySeconds $DelaySeconds `
-                -OutputSetName $workCaptureSet | Out-Null
+            $captureArgs = @{
+                Set = $setName
+                Lessons = @($lesson)
+                DelaySeconds = $DelaySeconds
+                LaunchAttempts = $LaunchAttempts
+                OutputSetName = $workCaptureSet
+            }
+            if ($DebugRejectedCaptures) {
+                $captureArgs.DebugRejectedCaptures = $true
+            }
+            & $captureScript @captureArgs | Out-Null
 
             $src = Join-Path $repo ("dist\nehe_reference\captures\{0}\{1}\nehe_{1}_{2:D2}.png" -f $workCaptureSet, $setName, $lesson)
             if (-not (Test-Path $src)) {
@@ -197,9 +226,10 @@ foreach ($setName in $sets) {
 $manifest = [ordered]@{
     generated_at = (Get-Date).ToString("o")
     set = $Set
-    lessons = $Lessons
+    lessons = $lessonList
     times = $timeList
     delay_seconds = $DelaySeconds
+    launch_attempts = $LaunchAttempts
     label = $Label
     captures = $results
 }

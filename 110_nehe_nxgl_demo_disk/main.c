@@ -745,7 +745,9 @@ static void render_05(Lesson *lesson, float t)
     glLoadIdentity();
     glTranslatef(1.5f, 0.0f, -7.0f);
     glRotatef(-t * 9.0f, 1.0f, 1.0f, 1.0f);
+    glEnable(GL_CULL_FACE);
     draw_cube(false);
+    glDisable(GL_CULL_FACE);
 }
 
 static void render_06(Lesson *lesson, float t)
@@ -757,7 +759,9 @@ static void render_06(Lesson *lesson, float t)
     glTranslatef(0.0f, 0.0f, NEHE_DEFAULT_VIEW_Z);
     glRotatef(t * 45.0f, 1.0f, 1.0f, 0.0f);
     glColor3f(1.0f, 1.0f, 1.0f);
+    glEnable(GL_CULL_FACE);
     draw_cube(true);
+    glDisable(GL_CULL_FACE);
 }
 
 static void render_07(Lesson *lesson, float t)
@@ -779,7 +783,9 @@ static void render_07(Lesson *lesson, float t)
     glTranslatef(0.0f, 0.0f, NEHE_DEFAULT_VIEW_Z);
     glRotatef(t * 42.0f, 1.0f, 1.0f, 0.0f);
     glColor3f(1.0f, 1.0f, 1.0f);
+    glEnable(GL_CULL_FACE);
     draw_cube(true);
+    glDisable(GL_CULL_FACE);
 }
 
 static void render_08(Lesson *lesson, float t)

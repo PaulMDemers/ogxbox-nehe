@@ -5,6 +5,8 @@ param(
     [double]$DelaySeconds = 12.0,
     [string]$OutputSetName = "xemu",
     [string]$EmuRoot = "",
+    [ValidateRange(1,10)]
+    [int]$LaunchAttempts = 3,
     [switch]$NoSnapshot,
     [switch]$DebugRejectedCaptures
 )
@@ -248,106 +250,123 @@ function Capture-XemuIso {
     if (-not $NoSnapshot) {
         $args += "-snapshot"
     }
-    $proc = Start-Process -FilePath $xemuExe -ArgumentList $args -WorkingDirectory $xemuRoot -PassThru
-    try {
-        $handle = Get-MainWindowHandle -Process $proc
-        Set-XemuCaptureWindow -Handle $handle
-        Start-Sleep -Milliseconds ([int]($DelaySeconds * 1000))
-        Set-XemuCaptureWindow -Handle $handle
-        Start-Sleep -Milliseconds 750
-
-        $rect = New-Object XemuCapture+RECT
-        [XemuCapture]::GetClientRect($handle, [ref]$rect) | Out-Null
-        $point = New-Object XemuCapture+POINT
-        $point.X = 0
-        $point.Y = 0
-        [XemuCapture]::ClientToScreen($handle, [ref]$point) | Out-Null
-
-        $width = [Math]::Max(1, $rect.Right - $rect.Left)
-        $height = [Math]::Max(1, $rect.Bottom - $rect.Top)
-        $bitmap = New-Object System.Drawing.Bitmap $width, $height
-        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    $lastFailure = $null
+    for ($launchAttempt = 1; $launchAttempt -le $LaunchAttempts; ++$launchAttempt) {
+        $proc = $null
         try {
-            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutPath) | Out-Null
-            $accepted = $false
-            $lastStats = $null
-            for ($attempt = 1; $attempt -le 5; ++$attempt) {
-                if (-not (Copy-XemuClientToBitmap -Handle $handle -Target $bitmap)) {
-                    $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
-                }
-                $lastStats = Get-CaptureStats -Bitmap $bitmap
-                if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
-                    $accepted = $true
-                    break
-                }
-                if ($DebugRejectedCaptures -and $attempt -eq 1) {
+            Write-Host ("Starting xemu launch attempt {0}/{1}: {2}" -f $launchAttempt, $LaunchAttempts, $Iso)
+            $proc = Start-Process -FilePath $xemuExe -ArgumentList $args -WorkingDirectory $xemuRoot -PassThru
+            try {
+                $handle = Get-MainWindowHandle -Process $proc
+                Set-XemuCaptureWindow -Handle $handle
+                Start-Sleep -Milliseconds ([int]($DelaySeconds * 1000))
+                Set-XemuCaptureWindow -Handle $handle
+                Start-Sleep -Milliseconds 750
+
+                $rect = New-Object XemuCapture+RECT
+                [XemuCapture]::GetClientRect($handle, [ref]$rect) | Out-Null
+                $point = New-Object XemuCapture+POINT
+                $point.X = 0
+                $point.Y = 0
+                [XemuCapture]::ClientToScreen($handle, [ref]$point) | Out-Null
+
+                $width = [Math]::Max(1, $rect.Right - $rect.Left)
+                $height = [Math]::Max(1, $rect.Bottom - $rect.Top)
+                $bitmap = New-Object System.Drawing.Bitmap $width, $height
+                $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+                try {
+                    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutPath) | Out-Null
                     $debugDir = Split-Path -Parent $OutPath
                     $debugName = [System.IO.Path]::GetFileNameWithoutExtension($OutPath)
-                    $debugBase = Join-Path $debugDir $debugName
-                    $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
-                }
-                $screenBitmap = New-Object System.Drawing.Bitmap $width, $height
-                $screenGraphics = [System.Drawing.Graphics]::FromImage($screenBitmap)
-                try {
-                    $screenGraphics.CopyFromScreen($point.X, $point.Y, 0, 0, $screenBitmap.Size)
-                    $screenStats = Get-CaptureStats -Bitmap $screenBitmap
-                    if (Test-CaptureLooksLikeFramebuffer -Bitmap $screenBitmap) {
-                        $graphics.DrawImage($screenBitmap, 0, 0)
-                        $lastStats = $screenStats
-                        $accepted = $true
-                        break
+                    $attemptSuffix = if ($launchAttempt -eq 1) { "" } else { ".launch$launchAttempt" }
+                    $debugBase = Join-Path $debugDir "$debugName$attemptSuffix"
+                    $accepted = $false
+                    $lastStats = $null
+                    for ($attempt = 1; $attempt -le 5; ++$attempt) {
+                        if (-not (Copy-XemuClientToBitmap -Handle $handle -Target $bitmap)) {
+                            $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
+                        }
+                        $lastStats = Get-CaptureStats -Bitmap $bitmap
+                        if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
+                            $accepted = $true
+                            break
+                        }
+                        if ($DebugRejectedCaptures -and $attempt -eq 1) {
+                            $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                        }
+                        $screenBitmap = New-Object System.Drawing.Bitmap $width, $height
+                        $screenGraphics = [System.Drawing.Graphics]::FromImage($screenBitmap)
+                        try {
+                            $screenGraphics.CopyFromScreen($point.X, $point.Y, 0, 0, $screenBitmap.Size)
+                            $screenStats = Get-CaptureStats -Bitmap $screenBitmap
+                            if (Test-CaptureLooksLikeFramebuffer -Bitmap $screenBitmap) {
+                                $graphics.DrawImage($screenBitmap, 0, 0)
+                                $lastStats = $screenStats
+                                $accepted = $true
+                                break
+                            }
+                            if ($DebugRejectedCaptures -and $attempt -eq 1) {
+                                $screenBitmap.Save("$debugBase.rejected-screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                            }
+                        } finally {
+                            if ($screenGraphics -ne $null) {
+                                $screenGraphics.Dispose()
+                            }
+                            if ($screenBitmap -ne $null) {
+                                $screenBitmap.Dispose()
+                            }
+                        }
+                        Set-XemuCaptureWindow -Handle $handle
+                        Start-Sleep -Milliseconds 1000
                     }
-                    if ($DebugRejectedCaptures -and $attempt -eq 1) {
-                        $debugDir = Split-Path -Parent $OutPath
-                        $debugName = [System.IO.Path]::GetFileNameWithoutExtension($OutPath)
-                        $debugBase = Join-Path $debugDir $debugName
-                        $screenBitmap.Save("$debugBase.rejected-screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                    if (-not $accepted) {
+                        if ($DebugRejectedCaptures) {
+                            $bitmap.Save("$debugBase.rejected-client.png", [System.Drawing.Imaging.ImageFormat]::Png)
+
+                            $windowRect = New-Object XemuCapture+RECT
+                            [XemuCapture]::GetWindowRect($handle, [ref]$windowRect) | Out-Null
+                            $windowWidth = [Math]::Max(1, $windowRect.Right - $windowRect.Left)
+                            $windowHeight = [Math]::Max(1, $windowRect.Bottom - $windowRect.Top)
+                            $windowBitmap = New-Object System.Drawing.Bitmap $windowWidth, $windowHeight
+                            $windowGraphics = [System.Drawing.Graphics]::FromImage($windowBitmap)
+                            try {
+                                $windowGraphics.CopyFromScreen($windowRect.Left, $windowRect.Top, 0, 0, $windowBitmap.Size)
+                                $windowBitmap.Save("$debugBase.rejected-window.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                            } finally {
+                                $windowGraphics.Dispose()
+                                $windowBitmap.Dispose()
+                            }
+                        }
+                        $lastFailure = ("Capture does not look like a rendered xemu framebuffer on launch attempt {0}/{1}; refusing to save it. mean_brightness={2:N2} non_dark_ratio={3:N4} corner_bright_neutral_ratio={4:N4} upper_right_bright_neutral_ratio={5:N4}" -f $launchAttempt, $LaunchAttempts, $lastStats.mean_brightness, $lastStats.non_dark_ratio, $lastStats.corner_bright_neutral_ratio, $lastStats.upper_right_bright_neutral_ratio)
+                    } else {
+                        $bitmap.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
+                        Write-Host "Captured $OutPath"
+                        return
                     }
                 } finally {
-                    if ($screenGraphics -ne $null) {
-                        $screenGraphics.Dispose()
-                    }
-                    if ($screenBitmap -ne $null) {
-                        $screenBitmap.Dispose()
-                    }
+                    $graphics.Dispose()
+                    $bitmap.Dispose()
                 }
-                Set-XemuCaptureWindow -Handle $handle
-                Start-Sleep -Milliseconds 1000
-            }
-            if (-not $accepted) {
-                if ($DebugRejectedCaptures) {
-                    $debugDir = Split-Path -Parent $OutPath
-                    $debugName = [System.IO.Path]::GetFileNameWithoutExtension($OutPath)
-                    $debugBase = Join-Path $debugDir $debugName
-                    $bitmap.Save("$debugBase.rejected-client.png", [System.Drawing.Imaging.ImageFormat]::Png)
-
-                    $windowRect = New-Object XemuCapture+RECT
-                    [XemuCapture]::GetWindowRect($handle, [ref]$windowRect) | Out-Null
-                    $windowWidth = [Math]::Max(1, $windowRect.Right - $windowRect.Left)
-                    $windowHeight = [Math]::Max(1, $windowRect.Bottom - $windowRect.Top)
-                    $windowBitmap = New-Object System.Drawing.Bitmap $windowWidth, $windowHeight
-                    $windowGraphics = [System.Drawing.Graphics]::FromImage($windowBitmap)
-                    try {
-                        $windowGraphics.CopyFromScreen($windowRect.Left, $windowRect.Top, 0, 0, $windowBitmap.Size)
-                        $windowBitmap.Save("$debugBase.rejected-window.png", [System.Drawing.Imaging.ImageFormat]::Png)
-                    } finally {
-                        $windowGraphics.Dispose()
-                        $windowBitmap.Dispose()
-                    }
+            } finally {
+                if (-not $proc.HasExited) {
+                    Stop-Process -Id $proc.Id -Force
                 }
-                throw ("Capture does not look like a rendered xemu framebuffer; refusing to save it. mean_brightness={0:N2} non_dark_ratio={1:N4} corner_bright_neutral_ratio={2:N4} upper_right_bright_neutral_ratio={3:N4}" -f $lastStats.mean_brightness, $lastStats.non_dark_ratio, $lastStats.corner_bright_neutral_ratio, $lastStats.upper_right_bright_neutral_ratio)
             }
-            $bitmap.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
-            Write-Host "Captured $OutPath"
-        } finally {
-            $graphics.Dispose()
-            $bitmap.Dispose()
+        } catch {
+            $lastFailure = $_.Exception.Message
+            if ($proc -ne $null -and -not $proc.HasExited) {
+                Stop-Process -Id $proc.Id -Force
+            }
         }
-    } finally {
-        if (-not $proc.HasExited) {
-            Stop-Process -Id $proc.Id -Force
+        if ($launchAttempt -lt $LaunchAttempts) {
+            Write-Warning "$lastFailure; retrying with a fresh xemu process"
+            Start-Sleep -Milliseconds 1500
         }
     }
+    if ([string]::IsNullOrWhiteSpace($lastFailure)) {
+        $lastFailure = "Capture failed without a detailed rejection reason"
+    }
+    throw $lastFailure
 }
 
 function Get-NeHeAppNumber {

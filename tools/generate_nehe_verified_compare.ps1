@@ -296,7 +296,8 @@ try {
     }
 
     $focusSheets = New-Object "System.Collections.Generic.List[System.Drawing.Bitmap]"
-    foreach ($lesson in $FocusLessons) {
+    $availableFocusLessons = @($FocusLessons | Where-Object { $Lessons -contains $_ })
+    foreach ($lesson in $availableFocusLessons) {
         $focusSheets.Add((New-LessonSheet $lesson $FocusTileWidth $FocusTileHeight))
     }
     Save-Grid $focusSheets 2 (Join-Path $outDir "nehe_verified_compare_focus.png")
