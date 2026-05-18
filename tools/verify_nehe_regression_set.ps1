@@ -10,6 +10,7 @@ param(
     [string]$Label = "",
     [switch]$DebugRejectedCaptures,
     [switch]$SkipSweep,
+    [switch]$XemuOnly,
     [switch]$AllowWarnings
 )
 
@@ -99,15 +100,27 @@ foreach ($setName in (Get-FrameSetNames $Set)) {
     }
 }
 
-$compareScript = Join-Path $PSScriptRoot "generate_nehe_verified_compare.ps1"
-$compareArgs = @{
-    CaptureSetName = $CaptureSetName
-    Lessons = $lessonList
-    FocusLessons = $lessonList
+if ($XemuOnly) {
+    $compareScript = Join-Path $PSScriptRoot "generate_nehe_xemu_pair_compare.ps1"
+    $compareArgs = @{
+        CaptureSetName = $CaptureSetName
+        Lessons = @($lessonList -join ",")
+    }
+    if (-not $AllowWarnings) {
+        $compareArgs.Strict = $true
+    }
+    & $compareScript @compareArgs
+} else {
+    $compareScript = Join-Path $PSScriptRoot "generate_nehe_verified_compare.ps1"
+    $compareArgs = @{
+        CaptureSetName = $CaptureSetName
+        Lessons = $lessonList
+        FocusLessons = $lessonList
+    }
+    if (-not $AllowWarnings) {
+        $compareArgs.Strict = $true
+    }
+    & $compareScript @compareArgs
 }
-if (-not $AllowWarnings) {
-    $compareArgs.Strict = $true
-}
-& $compareScript @compareArgs
 
 Write-Host "Verified NeHe regression set '$CaptureSetName' from fixed time ${TimeMs}ms."

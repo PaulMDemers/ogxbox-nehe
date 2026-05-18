@@ -9,6 +9,7 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipCapture,
     [switch]$DebugRejectedCaptures,
+    [switch]$XemuOnly,
     [switch]$AllowWarnings
 )
 
@@ -75,16 +76,30 @@ $lessonInts = foreach ($lessonToken in $Lessons) {
 }
 
 $focusLessons = @(5,6,7,12)
-$compareScript = Join-Path $PSScriptRoot "generate_nehe_verified_compare.ps1"
-if ($AllowWarnings) {
-    & $compareScript `
-        -Lessons $lessonInts `
-        -FocusLessons $focusLessons `
-        -CaptureSetName $CaptureSetName
+if ($XemuOnly) {
+    $compareScript = Join-Path $PSScriptRoot "generate_nehe_xemu_pair_compare.ps1"
+    if ($AllowWarnings) {
+        & $compareScript `
+            -Lessons $lessonInts `
+            -CaptureSetName $CaptureSetName
+    } else {
+        & $compareScript `
+            -Lessons $lessonInts `
+            -CaptureSetName $CaptureSetName `
+            -Strict
+    }
 } else {
-    & $compareScript `
-        -Lessons $lessonInts `
-        -FocusLessons $focusLessons `
-        -CaptureSetName $CaptureSetName `
-        -Strict
+    $compareScript = Join-Path $PSScriptRoot "generate_nehe_verified_compare.ps1"
+    if ($AllowWarnings) {
+        & $compareScript `
+            -Lessons $lessonInts `
+            -FocusLessons $focusLessons `
+            -CaptureSetName $CaptureSetName
+    } else {
+        & $compareScript `
+            -Lessons $lessonInts `
+            -FocusLessons $focusLessons `
+            -CaptureSetName $CaptureSetName `
+            -Strict
+    }
 }

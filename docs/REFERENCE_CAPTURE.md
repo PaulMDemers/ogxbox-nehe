@@ -109,4 +109,11 @@ recapturing xemu frames, pass the original sweep label:
 powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_regression_set.ps1 -SkipSweep -Label regression_05_06_07_08_12_2000ms
 ```
 
+For lessons that do not yet have Windows reference captures, use `-XemuOnly`
+to compare NXGL and PBKit captures directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_regression_set.ps1 -Lessons 13,14,15,16,17,18,19 -TimeMs 2500 -CaptureSetName xemu_regression_13_19_2500 -XemuOnly
+```
+
 Captured output is written under `dist/nehe_reference/captures`.

@@ -399,12 +399,14 @@ static void make_textures(void)
             float ndx = dx / 15.5f;
             float ndy = dy / 15.5f;
             float glow = 1.0f - sqrtf(ndx * ndx + ndy * ndy);
+            uint8_t glow_byte;
             if (glow < 0.0f) glow = 0.0f;
             glow = glow * glow;
-            particle_pixels[i + 0] = 255;
-            particle_pixels[i + 1] = 255;
-            particle_pixels[i + 2] = 255;
-            particle_pixels[i + 3] = (uint8_t)(glow * 255.0f + 0.5f);
+            glow_byte = (uint8_t)(glow * 255.0f + 0.5f);
+            particle_pixels[i + 0] = glow_byte;
+            particle_pixels[i + 1] = glow_byte;
+            particle_pixels[i + 2] = glow_byte;
+            particle_pixels[i + 3] = glow_byte;
         }
     }
 }
