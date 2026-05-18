@@ -1,0 +1,13 @@
+#ifndef NEHE_SCENE_H
+#define NEHE_SCENE_H
+
+#define NEHE_SCREEN_W 640
+#define NEHE_SCREEN_H 480
+#define NEHE_ASPECT ((float)NEHE_SCREEN_W / (float)NEHE_SCREEN_H)
+#define NEHE_FOV_Y_DEGREES 45.0f
+#define NEHE_NEAR_Z 0.1f
+#define NEHE_FAR_Z 100.0f
+#define NEHE_DEFAULT_VIEW_Z -6.0f
+#define NEHE_DEG_TO_RAD 0.017453292519943295769f
+
+#endif

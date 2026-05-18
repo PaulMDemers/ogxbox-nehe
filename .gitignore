@@ -1,0 +1,15 @@
+*.d
+*.obj
+*.exe
+*.elf
+*.xbe
+*.iso
+*.map
+*.lst
+*.bin
+bin/
+build/
+dist/
+Xbox-Emulator-Files/
+*.inl
+*.inl.*
