@@ -2,8 +2,7 @@ param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
     [int[]]$Lessons = @(5,6,7,8,12),
-    [ValidateRange(0,600000)]
-    [int[]]$Times = @(0,1000,2000,3000,4000,5000,6000),
+    [string[]]$Times = @("0","1000","2000","3000","4000","5000","6000"),
     [double]$DelaySeconds = 8.0,
     [string]$Label = "frame_sweep",
     [string]$NxdkDir = "",
@@ -20,8 +19,33 @@ $captureScript = Join-Path $PSScriptRoot "capture_nehe_xemu.ps1"
 $labels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts"
+    "display_lists","bitmap_fonts","outline_fonts"
 )
+
+function Convert-ToTimeList {
+    param([string[]]$Values)
+
+    $out = @()
+    foreach ($value in $Values) {
+        foreach ($part in ($value -split ",")) {
+            if ([string]::IsNullOrWhiteSpace($part)) {
+                continue
+            }
+            $time = 0
+            if (-not [int]::TryParse($part.Trim(), [ref]$time)) {
+                throw "Invalid fixed time value: $part"
+            }
+            if ($time -lt 0 -or $time -gt 600000) {
+                throw "Fixed time value out of range 0..600000: $time"
+            }
+            $out += $time
+        }
+    }
+    if ($out.Count -eq 0) {
+        throw "Pass at least one fixed time in milliseconds."
+    }
+    return $out
+}
 
 function Convert-ToMsysPath {
     param([string]$Path)
@@ -126,6 +150,7 @@ $sets = switch ($Set) {
     "pb" { @("pb") }
     default { @("nxgl","pb") }
 }
+$timeList = Convert-ToTimeList $Times
 
 New-Item -ItemType Directory -Force -Path $outRoot | Out-Null
 $results = @()
@@ -136,7 +161,7 @@ foreach ($setName in $sets) {
         $lessonDir = Join-Path $outRoot ("{0}_{1:D2}" -f $setName, $lesson)
         New-Item -ItemType Directory -Force -Path $lessonDir | Out-Null
 
-        foreach ($time in $Times) {
+        foreach ($time in $timeList) {
             Invoke-MsysBuild $appName $time
             & $captureScript `
                 -Set $setName `
@@ -167,7 +192,7 @@ $manifest = [ordered]@{
     generated_at = (Get-Date).ToString("o")
     set = $Set
     lessons = $Lessons
-    times = $Times
+    times = $timeList
     delay_seconds = $DelaySeconds
     label = $Label
     captures = $results

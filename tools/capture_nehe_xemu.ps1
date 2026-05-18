@@ -1,7 +1,7 @@
 param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
-    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13"),
+    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14"),
     [double]$DelaySeconds = 12.0,
     [string]$OutputSetName = "xemu",
     [string]$EmuRoot = "",
@@ -37,7 +37,7 @@ $runXemu = Join-Path $PSScriptRoot "run_xemu.ps1"
 $lessonLabels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts"
+    "display_lists","bitmap_fonts","outline_fonts"
 )
 
 Add-Type -AssemblyName System.Drawing

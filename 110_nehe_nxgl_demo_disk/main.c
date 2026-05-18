@@ -2,6 +2,7 @@
 #include "../common_nehe/nehe_assets_rgba.h"
 #include "../common_nehe/nehe_bitmap_font.h"
 #include "../common_nehe/nehe_capture_time.h"
+#include "../common_nehe/nehe_outline_font.h"
 #include "../common_nehe/nehe_scene.h"
 #include "../common_nehe/nehe_starfield.h"
 #include "../common_nehe/nehe_world_data.h"
@@ -523,6 +524,57 @@ static void draw_bitmap_text_quads(const char *text, float x, float y, float z, 
     glEnd();
 }
 
+static void outline_vertex(float x, float y, float z, float rot)
+{
+    float rx = rot * NEHE_DEG_TO_RAD;
+    float ry = rot * 1.2f * NEHE_DEG_TO_RAD;
+    float rz = rot * 1.4f * NEHE_DEG_TO_RAD;
+    float sx = sinf(rx), cx = cosf(rx);
+    float sy = sinf(ry), cy = cosf(ry);
+    float sz = sinf(rz), cz = cosf(rz);
+    float y1 = y * cx - z * sx;
+    float z1 = y * sx + z * cx;
+    float x2 = x * cy + z1 * sy;
+    float z2 = -x * sy + z1 * cy;
+    float x3 = x2 * cz - y1 * sz;
+    float y3 = x2 * sz + y1 * cz;
+
+    glVertex3f(x3, y3, z2 - 16.0f);
+}
+
+static void draw_outline_pixel_quads(float x0, float y0, float x1, float y1, float z, float depth, float rot)
+{
+    (void)depth;
+    outline_vertex(x0, y0, z, rot);
+    outline_vertex(x1, y0, z, rot);
+    outline_vertex(x1, y1, z, rot);
+    outline_vertex(x0, y1, z, rot);
+}
+
+static void draw_outline_text_quads(const char *text, float cell, float depth, float rot)
+{
+    float cursor = -nehe_outline_text_width(text, cell) * 0.5f;
+
+    glBegin(GL_QUADS);
+    for (const char *p = text; *p != '\0'; ++p) {
+        const uint8_t *rows = nehe_font_rows(*p);
+        for (int row = 0; row < NEHE_FONT_ROWS; ++row) {
+            for (int col = 0; col < NEHE_FONT_COLS; ++col) {
+                if (nehe_outline_font_pixel(rows, row, col)) {
+                    float x0 = cursor + (float)col * cell;
+                    float y0 = 0.38f - (float)row * cell;
+                    float x1 = x0 + cell * 0.78f;
+                    float y1 = y0 - cell * 0.78f;
+
+                    draw_outline_pixel_quads(x0, y0, x1, y1, 0.0f, depth, rot);
+                }
+            }
+        }
+        cursor += cell * 6.0f;
+    }
+    glEnd();
+}
+
 static void init_texture_checker(Lesson *lesson)
 {
     lesson->textures[0] = upload_texture(NEHE_ASSET_NEHE_W, NEHE_ASSET_NEHE_H, nehe_asset_nehe_rgba, GL_LINEAR);
@@ -830,6 +882,24 @@ static void render_13(Lesson *lesson, float t)
     draw_bitmap_text_quads("OpenGL With NeHe", x, y, -2.0f, 0.017f);
 }
 
+static void render_14(Lesson *lesson, float t)
+{
+    float rot = t * 3.0f;
+    float r = fmaxf(0.0f, cosf(rot / 20.0f));
+    float g = fmaxf(0.0f, sinf(rot / 25.0f));
+    float b = fmaxf(0.0f, fminf(1.0f, 1.0f - 0.5f * cosf(rot / 17.0f)));
+
+    (void)lesson;
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_TEXTURE_2D);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDisable(GL_CULL_FACE);
+    glLoadIdentity();
+    glColor3f(r, g, b);
+    draw_outline_text_quads("OpenGL With NeHe", 0.080f, 0.12f, rot);
+}
+
 static Lesson lessons[] = {
     {"NeHe 01 - OpenGL Window", "Clear/context setup", NULL, render_01, shutdown_default, {0}, {0}},
     {"NeHe 02 - First Polygons", "Triangle and quad", NULL, render_02, shutdown_default, {0}, {0}},
@@ -844,6 +914,7 @@ static Lesson lessons[] = {
     {"NeHe 11 - Flag Effect", "Textured sine mesh", init_flag_texture, render_11, shutdown_default, {0}, {0}},
     {"NeHe 12 - Display Lists", "Textured cube list stack", init_display_lists, render_12, shutdown_default, {0}, {0}},
     {"NeHe 13 - Bitmap Fonts", "Animated bitmap text", NULL, render_13, shutdown_default, {0}, {0}},
+    {"NeHe 14 - Outline Fonts", "Spinning outline text", NULL, render_14, shutdown_default, {0}, {0}},
 };
 
 static int lesson_count(void)
