@@ -63,7 +63,7 @@ static uint8_t font_pixels[NEHE_TEXTURE_FONT_SIZE * NEHE_TEXTURE_FONT_SIZE * 4];
 #ifndef NEHE_STANDALONE_LESSON_INDEX
 static int current_lesson = 1;
 #endif
-static int lesson_start;
+static DWORD lesson_start;
 
 #ifndef NEHE_STANDALONE_LESSON_INDEX
 static int16_t read_s16_le(const uint8_t *data)
@@ -1137,6 +1137,150 @@ static void render_17(Lesson *lesson, float t)
     print_texture_font_gl(lesson, (int)(242.0f + 200.0f * cosf((cnt1 + cnt2) / 5.0f)), 4, "Giuseppe D'Agata", 0);
 }
 
+#define NEHE_QUADRIC_GL_PI 3.14159265358979323846f
+#define NEHE_QUADRIC_GL_SLICES 32
+#define NEHE_QUADRIC_GL_STACKS 24
+#define NEHE_QUADRIC_GL_CYCLE_SECONDS 2.0f
+
+static int lesson_18_object_gl(float t)
+{
+    int object = (int)(t / NEHE_QUADRIC_GL_CYCLE_SECONDS) % 6;
+    return object < 0 ? 0 : object;
+}
+
+static float lesson_18_local_time_gl(float t)
+{
+    float local = fmodf(t, NEHE_QUADRIC_GL_CYCLE_SECONDS);
+    return local < 0.0f ? local + NEHE_QUADRIC_GL_CYCLE_SECONDS : local;
+}
+
+static void draw_cylinder_quadric_gl(float base_radius, float top_radius, float height)
+{
+    float slope = (base_radius - top_radius) / height;
+
+    glBegin(GL_QUADS);
+    for (int stack = 0; stack < NEHE_QUADRIC_GL_STACKS; ++stack) {
+        float t0 = (float)stack / (float)NEHE_QUADRIC_GL_STACKS;
+        float t1 = (float)(stack + 1) / (float)NEHE_QUADRIC_GL_STACKS;
+        float z0 = t0 * height - height * 0.5f;
+        float z1 = t1 * height - height * 0.5f;
+        float r0 = base_radius + (top_radius - base_radius) * t0;
+        float r1 = base_radius + (top_radius - base_radius) * t1;
+
+        for (int slice = 0; slice < NEHE_QUADRIC_GL_SLICES; ++slice) {
+            float u0 = (float)slice / (float)NEHE_QUADRIC_GL_SLICES;
+            float u1 = (float)(slice + 1) / (float)NEHE_QUADRIC_GL_SLICES;
+            float a0 = u0 * NEHE_QUADRIC_GL_PI * 2.0f;
+            float a1 = u1 * NEHE_QUADRIC_GL_PI * 2.0f;
+            float n0_len = sqrtf(1.0f + slope * slope);
+            float n1_len = n0_len;
+            float n0x = cosf(a0) / n0_len, n0y = sinf(a0) / n0_len, n0z = slope / n0_len;
+            float n1x = cosf(a1) / n1_len, n1y = sinf(a1) / n1_len, n1z = slope / n1_len;
+
+            glNormal3f(n0x, n0y, n0z); glTexCoord2f(u0, t0); glVertex3f(cosf(a0) * r0, sinf(a0) * r0, z0);
+            glNormal3f(n1x, n1y, n1z); glTexCoord2f(u1, t0); glVertex3f(cosf(a1) * r0, sinf(a1) * r0, z0);
+            glNormal3f(n1x, n1y, n1z); glTexCoord2f(u1, t1); glVertex3f(cosf(a1) * r1, sinf(a1) * r1, z1);
+            glNormal3f(n0x, n0y, n0z); glTexCoord2f(u0, t1); glVertex3f(cosf(a0) * r1, sinf(a0) * r1, z1);
+        }
+    }
+    glEnd();
+}
+
+static void draw_disk_quadric_gl(float inner_radius, float outer_radius, float start_deg, float sweep_deg)
+{
+    int slices = sweep_deg < 359.9f ? 24 : NEHE_QUADRIC_GL_SLICES;
+    float start = start_deg * NEHE_DEG_TO_RAD;
+    float sweep = sweep_deg * NEHE_DEG_TO_RAD;
+
+    if (sweep_deg <= 0.0f) {
+        return;
+    }
+
+    glBegin(GL_QUADS);
+    glNormal3f(0.0f, 0.0f, 1.0f);
+    for (int ring = 0; ring < NEHE_QUADRIC_GL_STACKS; ++ring) {
+        float r0 = inner_radius + (outer_radius - inner_radius) * (float)ring / (float)NEHE_QUADRIC_GL_STACKS;
+        float r1 = inner_radius + (outer_radius - inner_radius) * (float)(ring + 1) / (float)NEHE_QUADRIC_GL_STACKS;
+
+        for (int slice = 0; slice < slices; ++slice) {
+            float u0 = (float)slice / (float)slices;
+            float u1 = (float)(slice + 1) / (float)slices;
+            float v0 = (float)ring / (float)NEHE_QUADRIC_GL_STACKS;
+            float v1 = (float)(ring + 1) / (float)NEHE_QUADRIC_GL_STACKS;
+            float a0 = start + sweep * u0;
+            float a1 = start + sweep * u1;
+
+            glTexCoord2f(u0, v0); glVertex3f(cosf(a0) * r0, sinf(a0) * r0, 0.0f);
+            glTexCoord2f(u1, v0); glVertex3f(cosf(a1) * r0, sinf(a1) * r0, 0.0f);
+            glTexCoord2f(u1, v1); glVertex3f(cosf(a1) * r1, sinf(a1) * r1, 0.0f);
+            glTexCoord2f(u0, v1); glVertex3f(cosf(a0) * r1, sinf(a0) * r1, 0.0f);
+        }
+    }
+    glEnd();
+}
+
+static void draw_sphere_quadric_gl(float radius)
+{
+    glBegin(GL_QUADS);
+    for (int stack = 0; stack < NEHE_QUADRIC_GL_STACKS; ++stack) {
+        float v0 = (float)stack / (float)NEHE_QUADRIC_GL_STACKS;
+        float v1 = (float)(stack + 1) / (float)NEHE_QUADRIC_GL_STACKS;
+        float phi0 = -NEHE_QUADRIC_GL_PI * 0.5f + v0 * NEHE_QUADRIC_GL_PI;
+        float phi1 = -NEHE_QUADRIC_GL_PI * 0.5f + v1 * NEHE_QUADRIC_GL_PI;
+
+        for (int slice = 0; slice < NEHE_QUADRIC_GL_SLICES; ++slice) {
+            float u0 = (float)slice / (float)NEHE_QUADRIC_GL_SLICES;
+            float u1 = (float)(slice + 1) / (float)NEHE_QUADRIC_GL_SLICES;
+            float a0 = u0 * NEHE_QUADRIC_GL_PI * 2.0f;
+            float a1 = u1 * NEHE_QUADRIC_GL_PI * 2.0f;
+            float n0x = cosf(phi0) * cosf(a0), n0y = cosf(phi0) * sinf(a0), n0z = sinf(phi0);
+            float n1x = cosf(phi0) * cosf(a1), n1y = cosf(phi0) * sinf(a1), n1z = sinf(phi0);
+            float n2x = cosf(phi1) * cosf(a1), n2y = cosf(phi1) * sinf(a1), n2z = sinf(phi1);
+            float n3x = cosf(phi1) * cosf(a0), n3y = cosf(phi1) * sinf(a0), n3z = sinf(phi1);
+
+            glNormal3f(n0x, n0y, n0z); glTexCoord2f(u0, v0); glVertex3f(n0x * radius, n0y * radius, n0z * radius);
+            glNormal3f(n1x, n1y, n1z); glTexCoord2f(u1, v0); glVertex3f(n1x * radius, n1y * radius, n1z * radius);
+            glNormal3f(n2x, n2y, n2z); glTexCoord2f(u1, v1); glVertex3f(n2x * radius, n2y * radius, n2z * radius);
+            glNormal3f(n3x, n3y, n3z); glTexCoord2f(u0, v1); glVertex3f(n3x * radius, n3y * radius, n3z * radius);
+        }
+    }
+    glEnd();
+}
+
+static void render_18(Lesson *lesson, float t)
+{
+    int object = lesson_18_object_gl(t);
+    float local = lesson_18_local_time_gl(t);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, lesson->textures[0]);
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_LIGHT0);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    glLoadIdentity();
+    glTranslatef(0.0f, 0.0f, -5.0f);
+    glRotatef(t * 45.0f, 1.0f, 0.0f, 0.0f);
+    glRotatef(t * 33.0f, 0.0f, 1.0f, 0.0f);
+
+    switch (object) {
+    case 0: draw_cube(true); break;
+    case 1: draw_cylinder_quadric_gl(1.0f, 1.0f, 3.0f); break;
+    case 2: draw_disk_quadric_gl(0.5f, 1.5f, 0.0f, 360.0f); break;
+    case 3: draw_sphere_quadric_gl(1.3f); break;
+    case 4: draw_cylinder_quadric_gl(1.0f, 0.0f, 3.0f); break;
+    default: {
+        float phase = local / NEHE_QUADRIC_GL_CYCLE_SECONDS;
+        float start = phase < 0.5f ? 0.0f : (phase - 0.5f) * 720.0f;
+        float sweep = phase < 0.5f ? phase * 720.0f : 360.0f - start;
+        draw_disk_quadric_gl(0.5f, 1.5f, start, sweep);
+        break;
+    }
+    }
+}
+
 static Lesson lessons[] = {
     {"NeHe 01 - OpenGL Window", "Clear/context setup", NULL, render_01, shutdown_default, {0}, {0}},
     {"NeHe 02 - First Polygons", "Triangle and quad", NULL, render_02, shutdown_default, {0}, {0}},
@@ -1155,6 +1299,7 @@ static Lesson lessons[] = {
     {"NeHe 15 - Texture Outline Fonts", "Textured outline symbol", init_lights_texture, render_15, shutdown_default, {0}, {0}},
     {"NeHe 16 - Cool Looking Fog", "Fog over textured crates", init_texture_crate_linear, render_16, shutdown_default, {0}, {0}},
     {"NeHe 17 - 2D Texture Font", "Texture atlas font overlay", init_texture_font, render_17, shutdown_texture_font, {0}, {0}},
+    {"NeHe 18 - Quadrics", "Cube and GLU-style quadric shapes", init_texture_crate_linear, render_18, shutdown_default, {0}, {0}},
 };
 
 static int lesson_count(void)

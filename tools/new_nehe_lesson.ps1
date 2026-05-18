@@ -199,7 +199,7 @@ $pbMain = @"
 
 int main(void)
 {
-    int start;
+    DWORD start;
 
     if (n3_init() != 0) {
         Sleep(3000);

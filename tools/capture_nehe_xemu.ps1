@@ -1,10 +1,11 @@
 param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
-    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17"),
+    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18"),
     [double]$DelaySeconds = 12.0,
     [string]$OutputSetName = "xemu",
     [string]$EmuRoot = "",
+    [switch]$NoSnapshot,
     [switch]$DebugRejectedCaptures
 )
 
@@ -37,7 +38,7 @@ $runXemu = Join-Path $PSScriptRoot "run_xemu.ps1"
 $lessonLabels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts"
+    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics"
 )
 
 Add-Type -AssemblyName System.Drawing
@@ -125,6 +126,8 @@ function Get-CaptureStats {
     $nonDark = 0
     $cornerSamples = 0
     $cornerBrightNeutral = 0
+    $upperRightSamples = 0
+    $upperRightBrightNeutral = 0
     for ($y = 0; $y -lt $Bitmap.Height; $y += 16) {
         for ($x = 0; $x -lt $Bitmap.Width; $x += 16) {
             $pixel = $Bitmap.GetPixel($x, $y)
@@ -141,6 +144,14 @@ function Get-CaptureStats {
                     $cornerBrightNeutral++
                 }
             }
+            if (($x -ge ($Bitmap.Width * 0.55)) -and ($y -ge ($Bitmap.Height * 0.15)) -and ($y -le ($Bitmap.Height * 0.35))) {
+                $upperRightSamples++
+                $maxChannel = [Math]::Max($pixel.R, [Math]::Max($pixel.G, $pixel.B))
+                $minChannel = [Math]::Min($pixel.R, [Math]::Min($pixel.G, $pixel.B))
+                if (($pixel.R -gt 180) -and ($pixel.G -gt 180) -and ($pixel.B -gt 180) -and (($maxChannel - $minChannel) -lt 35)) {
+                    $upperRightBrightNeutral++
+                }
+            }
             $samples++
         }
     }
@@ -151,11 +162,15 @@ function Get-CaptureStats {
     if ($cornerSamples -eq 0) {
         $cornerSamples = 1
     }
+    if ($upperRightSamples -eq 0) {
+        $upperRightSamples = 1
+    }
 
     return [ordered]@{
         mean_brightness = $total / $samples
         non_dark_ratio = $nonDark / $samples
         corner_bright_neutral_ratio = $cornerBrightNeutral / $cornerSamples
+        upper_right_bright_neutral_ratio = $upperRightBrightNeutral / $upperRightSamples
     }
 }
 
@@ -163,7 +178,7 @@ function Test-CaptureLooksLikeFramebuffer {
     param([System.Drawing.Bitmap]$Bitmap)
 
     $stats = Get-CaptureStats -Bitmap $Bitmap
-    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08))
+    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08) -and ($stats.upper_right_bright_neutral_ratio -lt 0.40))
 }
 
 function Copy-XemuClientToBitmap {
@@ -191,7 +206,7 @@ function Copy-XemuClientToBitmap {
     try {
         $hdc = $windowGraphics.GetHdc()
         try {
-            $printed = [XemuCapture]::PrintWindow($Handle, $hdc, [XemuCapture]::PW_RENDERFULLCONTENT)
+            $printed = [XemuCapture]::PrintWindow($Handle, $hdc, 0)
         } finally {
             $windowGraphics.ReleaseHdc($hdc)
         }
@@ -229,7 +244,10 @@ function Capture-XemuIso {
         throw "xemu config not found: $configPath"
     }
 
-    $args = @("-config_path", $configPath, "-dvd_path", $Iso, "-snapshot")
+    $args = @("-config_path", $configPath, "-dvd_path", $Iso)
+    if (-not $NoSnapshot) {
+        $args += "-snapshot"
+    }
     $proc = Start-Process -FilePath $xemuExe -ArgumentList $args -WorkingDirectory $xemuRoot -PassThru
     try {
         $handle = Get-MainWindowHandle -Process $proc
@@ -262,6 +280,18 @@ function Capture-XemuIso {
                     $accepted = $true
                     break
                 }
+                if ($DebugRejectedCaptures -and $attempt -eq 1) {
+                    $debugDir = Split-Path -Parent $OutPath
+                    $debugName = [System.IO.Path]::GetFileNameWithoutExtension($OutPath)
+                    $debugBase = Join-Path $debugDir $debugName
+                    $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                }
+                $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
+                $lastStats = Get-CaptureStats -Bitmap $bitmap
+                if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
+                    $accepted = $true
+                    break
+                }
                 Set-XemuCaptureWindow -Handle $handle
                 Start-Sleep -Milliseconds 1000
             }
@@ -286,7 +316,7 @@ function Capture-XemuIso {
                         $windowBitmap.Dispose()
                     }
                 }
-                throw ("Capture does not look like a rendered xemu framebuffer; refusing to save it. mean_brightness={0:N2} non_dark_ratio={1:N4} corner_bright_neutral_ratio={2:N4}" -f $lastStats.mean_brightness, $lastStats.non_dark_ratio, $lastStats.corner_bright_neutral_ratio)
+                throw ("Capture does not look like a rendered xemu framebuffer; refusing to save it. mean_brightness={0:N2} non_dark_ratio={1:N4} corner_bright_neutral_ratio={2:N4} upper_right_bright_neutral_ratio={3:N4}" -f $lastStats.mean_brightness, $lastStats.non_dark_ratio, $lastStats.corner_bright_neutral_ratio, $lastStats.upper_right_bright_neutral_ratio)
             }
             $bitmap.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
             Write-Host "Captured $OutPath"
@@ -340,9 +370,17 @@ foreach ($setName in $sets) {
             $label = $lessonLabels[$lesson - 1]
             $appNumber = Get-NeHeAppNumber $setName $lesson
             if ($setName -eq "nxgl") {
-                $iso = Join-Path $isoRoot ("xbnehe_{0}_nehe_nxgl_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                if ($lesson -le 12) {
+                    $iso = Join-Path $isoRoot ("xbnehe_{0}_nxgl_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                } else {
+                    $iso = Join-Path $isoRoot ("xbnehe_{0}_nehe_nxgl_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                }
             } else {
-                $iso = Join-Path $isoRoot ("xbnehe_{0}_nehe_pb_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                if ($lesson -le 12) {
+                    $iso = Join-Path $isoRoot ("xbnehe_{0}_pb_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                } else {
+                    $iso = Join-Path $isoRoot ("xbnehe_{0}_nehe_pb_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                }
             }
 
             if (-not (Test-Path $iso)) {

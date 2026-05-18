@@ -19,7 +19,7 @@ $captureScript = Join-Path $PSScriptRoot "capture_nehe_xemu.ps1"
 $labels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts"
+    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics"
 )
 
 function Convert-ToTimeList {
@@ -101,9 +101,15 @@ function Get-AppName {
     $label = $labels[$Lesson - 1]
     if ($SetName -eq "nxgl") {
         $appNumber = if ($Lesson -le 12) { 110 + $Lesson } else { 200 + $Lesson }
+        if ($Lesson -le 12) {
+            return ("{0}_nxgl_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
+        }
         return ("{0}_nehe_nxgl_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
     }
     $appNumber = if ($Lesson -le 12) { 122 + $Lesson } else { 300 + $Lesson }
+    if ($Lesson -le 12) {
+        return ("{0}_pb_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
+    }
     return ("{0}_nehe_pb_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
 }
 

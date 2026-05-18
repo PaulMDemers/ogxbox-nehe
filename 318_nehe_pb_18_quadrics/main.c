@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <windows.h>
 
-#define STANDALONE_LESSON_INDEX 2
+#define STANDALONE_LESSON_INDEX 17
 
 int main(void)
 {
