@@ -69,4 +69,16 @@ The older fixed-sheet generator is still available:
 powershell -ExecutionPolicy Bypass -File .\tools\generate_nehe_compare.ps1
 ```
 
+## Capture Rotation Sweeps
+
+For rotation-sensitive artifacts, rebuild selected lessons at fixed tutorial
+times and capture each frame serially:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\capture_nehe_frame_sweep.ps1 -Set all -Lessons 5,6,7,8,12 -Times 0,1000,2000,3000,4000,5000,6000
+```
+
+The sweep writes PNGs and a `manifest.json` under
+`dist/nehe_reference/captures/xemu_frames/<label>`.
+
 Captured output is written under `dist/nehe_reference/captures`.

@@ -114,6 +114,8 @@ function Get-CaptureStats {
     $samples = 0
     $total = 0.0
     $nonDark = 0
+    $cornerSamples = 0
+    $cornerBrightNeutral = 0
     for ($y = 0; $y -lt $Bitmap.Height; $y += 16) {
         for ($x = 0; $x -lt $Bitmap.Width; $x += 16) {
             $pixel = $Bitmap.GetPixel($x, $y)
@@ -122,6 +124,14 @@ function Get-CaptureStats {
             if ($value -gt 12.0) {
                 $nonDark++
             }
+            if (($x -ge ($Bitmap.Width * 0.8)) -and ($y -ge ($Bitmap.Height * 0.8))) {
+                $cornerSamples++
+                $maxChannel = [Math]::Max($pixel.R, [Math]::Max($pixel.G, $pixel.B))
+                $minChannel = [Math]::Min($pixel.R, [Math]::Min($pixel.G, $pixel.B))
+                if (($pixel.R -gt 180) -and ($pixel.G -gt 180) -and ($pixel.B -gt 180) -and (($maxChannel - $minChannel) -lt 35)) {
+                    $cornerBrightNeutral++
+                }
+            }
             $samples++
         }
     }
@@ -129,10 +139,14 @@ function Get-CaptureStats {
     if ($samples -eq 0) {
         $samples = 1
     }
+    if ($cornerSamples -eq 0) {
+        $cornerSamples = 1
+    }
 
     return [ordered]@{
         mean_brightness = $total / $samples
         non_dark_ratio = $nonDark / $samples
+        corner_bright_neutral_ratio = $cornerBrightNeutral / $cornerSamples
     }
 }
 
@@ -140,7 +154,7 @@ function Test-CaptureLooksLikeFramebuffer {
     param([System.Drawing.Bitmap]$Bitmap)
 
     $stats = Get-CaptureStats -Bitmap $Bitmap
-    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002))
+    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08))
 }
 
 function Capture-XemuIso {
@@ -212,7 +226,7 @@ function Capture-XemuIso {
                         $windowBitmap.Dispose()
                     }
                 }
-                throw ("Capture does not look like a rendered xemu framebuffer; refusing to save it. mean_brightness={0:N2} non_dark_ratio={1:N4}" -f $lastStats.mean_brightness, $lastStats.non_dark_ratio)
+                throw ("Capture does not look like a rendered xemu framebuffer; refusing to save it. mean_brightness={0:N2} non_dark_ratio={1:N4} corner_bright_neutral_ratio={2:N4}" -f $lastStats.mean_brightness, $lastStats.non_dark_ratio, $lastStats.corner_bright_neutral_ratio)
             }
             $bitmap.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
             Write-Host "Captured $OutPath"
