@@ -32,7 +32,9 @@ static N3Texture mud_texture;
 static N3Texture tim_texture;
 static N3Texture cube_texture;
 static N3Texture font_texture;
+static N3Texture particle_texture;
 static uint8_t font_texture_pixels[NEHE_TEXTURE_FONT_SIZE * NEHE_TEXTURE_FONT_SIZE * 4];
+static uint8_t particle_texture_pixels[32 * 32 * 4];
 
 static const char *titles[NEHE_LESSON_COUNT] = {
     "NeHe 01 - window / clear",
@@ -52,7 +54,8 @@ static const char *titles[NEHE_LESSON_COUNT] = {
     "NeHe 15 - texture mapped outline fonts",
     "NeHe 16 - cool looking fog",
     "NeHe 17 - 2D texture font",
-    "NeHe 18 - quadrics"
+    "NeHe 18 - quadrics",
+    "NeHe 19 - particle engine"
 };
 
 static const char *details[NEHE_LESSON_COUNT] = {
@@ -73,7 +76,8 @@ static const char *details[NEHE_LESSON_COUNT] = {
     "Texture mapped outline symbol",
     "Fog over textured crates",
     "Texture atlas font overlay",
-    "Cube and GLU-style quadric shapes"
+    "Cube and GLU-style quadric shapes",
+    "Additive blended particle system"
 };
 
 static int clamp_lesson(int lesson)
@@ -89,6 +93,23 @@ static int clamp_lesson(int lesson)
 
 int nehe_lessons_init(void)
 {
+    for (int y = 0; y < 32; ++y) {
+        for (int x = 0; x < 32; ++x) {
+            float dx = ((float)x - 15.5f) / 15.5f;
+            float dy = ((float)y - 15.5f) / 15.5f;
+            float dist = sqrtf(dx * dx + dy * dy);
+            float glow = 1.0f - dist;
+            int i = (y * 32 + x) * 4;
+
+            if (glow < 0.0f) glow = 0.0f;
+            glow = glow * glow;
+            particle_texture_pixels[i + 0] = 255;
+            particle_texture_pixels[i + 1] = 255;
+            particle_texture_pixels[i + 2] = 255;
+            particle_texture_pixels[i + 3] = (uint8_t)(glow * 255.0f + 0.5f);
+        }
+    }
+
     if (n3_texture_create_rgba(&nehe_texture, NEHE_ASSET_NEHE_W, NEHE_ASSET_NEHE_H, nehe_asset_nehe_rgba) != 0) {
         return -1;
     }
@@ -108,7 +129,8 @@ int nehe_lessons_init(void)
         return -1;
     }
     nehe_texture_font_fill_rgba(font_texture_pixels);
-    if (n3_texture_create_rgba(&font_texture, NEHE_TEXTURE_FONT_SIZE, NEHE_TEXTURE_FONT_SIZE, font_texture_pixels) != 0) {
+    if (n3_texture_create_rgba(&font_texture, NEHE_TEXTURE_FONT_SIZE, NEHE_TEXTURE_FONT_SIZE, font_texture_pixels) != 0 ||
+        n3_texture_create_rgba(&particle_texture, 32, 32, particle_texture_pixels) != 0) {
         n3_texture_destroy(&nehe_texture);
         n3_texture_destroy(&crate_texture);
         n3_texture_destroy(&glass_texture);
@@ -116,6 +138,7 @@ int nehe_lessons_init(void)
         n3_texture_destroy(&mud_texture);
         n3_texture_destroy(&tim_texture);
         n3_texture_destroy(&cube_texture);
+        n3_texture_destroy(&font_texture);
         return -1;
     }
     return 0;
@@ -131,6 +154,7 @@ void nehe_lessons_shutdown(void)
     n3_texture_destroy(&tim_texture);
     n3_texture_destroy(&cube_texture);
     n3_texture_destroy(&font_texture);
+    n3_texture_destroy(&particle_texture);
 }
 
 static void lesson_01(float t)
@@ -865,6 +889,82 @@ static void lesson_18(float t)
     }
 }
 
+#define NEHE_PARTICLE_COUNT 220
+#define NEHE_PARTICLE_LIFE 4.0f
+
+static const N3Color particle_palette[12] = {
+    { 1.0f, 0.2f, 0.2f, 1.0f },
+    { 1.0f, 0.5f, 0.1f, 1.0f },
+    { 1.0f, 0.9f, 0.1f, 1.0f },
+    { 0.5f, 1.0f, 0.1f, 1.0f },
+    { 0.1f, 1.0f, 0.3f, 1.0f },
+    { 0.1f, 1.0f, 0.9f, 1.0f },
+    { 0.1f, 0.6f, 1.0f, 1.0f },
+    { 0.2f, 0.2f, 1.0f, 1.0f },
+    { 0.6f, 0.2f, 1.0f, 1.0f },
+    { 1.0f, 0.2f, 1.0f, 1.0f },
+    { 1.0f, 0.2f, 0.6f, 1.0f },
+    { 1.0f, 1.0f, 1.0f, 1.0f },
+};
+
+static float lesson_19_unit(int index, uint32_t salt)
+{
+    uint32_t h = (uint32_t)index * 1664525u + salt * 1013904223u;
+
+    h ^= h >> 16;
+    h *= 2246822519u;
+    h ^= h >> 13;
+    return (float)(h & 0xffffu) / 65535.0f;
+}
+
+static void lesson_19_particle(int index, float t, N3Vec3 *pos, float *size, N3Color *color)
+{
+    float phase = lesson_19_unit(index, 1u) * NEHE_PARTICLE_LIFE;
+    float age = fmodf(t + phase, NEHE_PARTICLE_LIFE);
+    float u = age / NEHE_PARTICLE_LIFE;
+    float fade = 1.0f - u;
+    float spread = lesson_19_unit(index, 2u) * NEHE_QUADRIC_PI * 2.0f;
+    float vx = cosf(spread) * (0.25f + lesson_19_unit(index, 3u) * 1.05f);
+    float vz = sinf(spread) * (0.15f + lesson_19_unit(index, 4u) * 0.75f);
+    float vy = 1.25f + lesson_19_unit(index, 5u) * 1.45f;
+    N3Color base = particle_palette[(index + (int)(t * 9.0f)) % 12];
+
+    pos->x = vx * age + sinf(t * 1.7f + (float)index * 0.37f) * 0.12f;
+    pos->y = -1.35f + vy * age - 0.68f * age * age;
+    pos->z = vz * age;
+    *size = 0.11f + fade * 0.20f;
+    color->r = base.r;
+    color->g = base.g;
+    color->b = base.b;
+    color->a = fade * fade;
+}
+
+static void lesson_19_push_particle(N3Vec3 pos, float size, N3Color color)
+{
+    N3Vertex a = { { pos.x - size, pos.y - size, pos.z }, color, 0.0f, 0.0f };
+    N3Vertex b = { { pos.x + size, pos.y - size, pos.z }, color, 1.0f, 0.0f };
+    N3Vertex c = { { pos.x + size, pos.y + size, pos.z }, color, 1.0f, 1.0f };
+    N3Vertex d = { { pos.x - size, pos.y + size, pos.z }, color, 0.0f, 1.0f };
+
+    n3_push_quad(a, b, c, d);
+}
+
+static void lesson_19(float t)
+{
+    n3_bind_texture(&particle_texture);
+    n3_set_depth(false, false);
+    n3_set_blend_func(NV097_SET_BLEND_FUNC_SFACTOR_V_SRC_ALPHA, NV097_SET_BLEND_FUNC_DFACTOR_V_ONE);
+    n3_set_camera(0.0f, 0.0f, -5.0f, 0.0f, 0.0f, 0.0f);
+    for (int i = 0; i < NEHE_PARTICLE_COUNT; ++i) {
+        N3Vec3 pos;
+        float size;
+        N3Color color;
+
+        lesson_19_particle(i, t, &pos, &size, &color);
+        lesson_19_push_particle(pos, size, color);
+    }
+}
+
 void nehe_lesson_render(int lesson, float t)
 {
     n3_set_projection(NEHE_FOV_Y_DEGREES, NEHE_NEAR_Z, NEHE_FAR_Z);
@@ -889,6 +989,7 @@ void nehe_lesson_render(int lesson, float t)
     case 15: lesson_16(t); break;
     case 16: lesson_17(t); break;
     case 17: lesson_18(t); break;
+    case 18: lesson_19(t); break;
     }
 }
 
@@ -905,7 +1006,7 @@ const char *nehe_lesson_detail(int lesson)
 bool nehe_lesson_blend_enabled(int lesson)
 {
     lesson = clamp_lesson(lesson);
-    return lesson == 7 || lesson == 8 || lesson == 16;
+    return lesson == 7 || lesson == 8 || lesson == 16 || lesson == 18;
 }
 
 uint32_t nehe_lesson_clear_color(int lesson)

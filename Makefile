@@ -16,7 +16,8 @@ NEHE_NXGL_APPS = \
 	215_nehe_nxgl_15_texture_mapped_outline_fonts \
 	216_nehe_nxgl_16_fog \
 	217_nehe_nxgl_17_texture_fonts \
-	218_nehe_nxgl_18_quadrics
+	218_nehe_nxgl_18_quadrics \
+	219_nehe_nxgl_19_particle_engine
 
 NEHE_PB_APPS = \
 	123_nehe_pb_01_window \
@@ -36,7 +37,8 @@ NEHE_PB_APPS = \
 	315_nehe_pb_15_texture_mapped_outline_fonts \
 	316_nehe_pb_16_fog \
 	317_nehe_pb_17_texture_fonts \
-	318_nehe_pb_18_quadrics
+	318_nehe_pb_18_quadrics \
+	319_nehe_pb_19_particle_engine
 
 NEHE_APPS = $(NEHE_NXGL_APPS) $(NEHE_PB_APPS)
 

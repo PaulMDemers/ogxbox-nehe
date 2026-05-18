@@ -57,6 +57,7 @@ static bool pad_read_queued;
 static uint8_t checker_pixels[64 * 64 * 4];
 static uint8_t crate_pixels[64 * 64 * 4];
 static uint8_t star_pixels[32 * 32 * 4];
+static uint8_t particle_pixels[32 * 32 * 4];
 static uint8_t world_pixels[64 * 64 * 4];
 static uint8_t font_pixels[NEHE_TEXTURE_FONT_SIZE * NEHE_TEXTURE_FONT_SIZE * 4];
 
@@ -394,6 +395,16 @@ static void make_textures(void)
             star_pixels[i + 1] = (uint8_t)(180 + (a / 4));
             star_pixels[i + 2] = 80;
             star_pixels[i + 3] = (uint8_t)a;
+
+            float ndx = dx / 15.5f;
+            float ndy = dy / 15.5f;
+            float glow = 1.0f - sqrtf(ndx * ndx + ndy * ndy);
+            if (glow < 0.0f) glow = 0.0f;
+            glow = glow * glow;
+            particle_pixels[i + 0] = 255;
+            particle_pixels[i + 1] = 255;
+            particle_pixels[i + 2] = 255;
+            particle_pixels[i + 3] = (uint8_t)(glow * 255.0f + 0.5f);
         }
     }
 }
@@ -638,6 +649,11 @@ static void init_texture_font(Lesson *lesson)
 {
     lesson->textures[0] = upload_texture(NEHE_TEXTURE_FONT_SIZE, NEHE_TEXTURE_FONT_SIZE, font_pixels, GL_LINEAR);
     lesson->textures[1] = upload_texture(NEHE_ASSET_CUBE_W, NEHE_ASSET_CUBE_H, nehe_asset_cube_rgba, GL_LINEAR);
+}
+
+static void init_particle_texture(Lesson *lesson)
+{
+    lesson->textures[0] = upload_texture(32, 32, particle_pixels, GL_LINEAR);
 }
 
 static void shutdown_default(Lesson *lesson)
@@ -1281,6 +1297,74 @@ static void render_18(Lesson *lesson, float t)
     }
 }
 
+#define NEHE_PARTICLE_GL_COUNT 220
+#define NEHE_PARTICLE_GL_LIFE 4.0f
+
+static const GLfloat particle_palette_gl[12][3] = {
+    { 1.0f, 0.2f, 0.2f },
+    { 1.0f, 0.5f, 0.1f },
+    { 1.0f, 0.9f, 0.1f },
+    { 0.5f, 1.0f, 0.1f },
+    { 0.1f, 1.0f, 0.3f },
+    { 0.1f, 1.0f, 0.9f },
+    { 0.1f, 0.6f, 1.0f },
+    { 0.2f, 0.2f, 1.0f },
+    { 0.6f, 0.2f, 1.0f },
+    { 1.0f, 0.2f, 1.0f },
+    { 1.0f, 0.2f, 0.6f },
+    { 1.0f, 1.0f, 1.0f },
+};
+
+static float lesson_19_unit_gl(int index, uint32_t salt)
+{
+    uint32_t h = (uint32_t)index * 1664525u + salt * 1013904223u;
+
+    h ^= h >> 16;
+    h *= 2246822519u;
+    h ^= h >> 13;
+    return (float)(h & 0xffffu) / 65535.0f;
+}
+
+static void render_19(Lesson *lesson, float t)
+{
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, lesson->textures[0]);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_CULL_FACE);
+    glLoadIdentity();
+    glTranslatef(0.0f, 0.0f, -5.0f);
+
+    glBegin(GL_QUADS);
+    for (int i = 0; i < NEHE_PARTICLE_GL_COUNT; ++i) {
+        float phase = lesson_19_unit_gl(i, 1u) * NEHE_PARTICLE_GL_LIFE;
+        float age = fmodf(t + phase, NEHE_PARTICLE_GL_LIFE);
+        float u = age / NEHE_PARTICLE_GL_LIFE;
+        float fade = 1.0f - u;
+        float spread = lesson_19_unit_gl(i, 2u) * (float)M_PI * 2.0f;
+        float vx = cosf(spread) * (0.25f + lesson_19_unit_gl(i, 3u) * 1.05f);
+        float vz = sinf(spread) * (0.15f + lesson_19_unit_gl(i, 4u) * 0.75f);
+        float vy = 1.25f + lesson_19_unit_gl(i, 5u) * 1.45f;
+        float x = vx * age + sinf(t * 1.7f + (float)i * 0.37f) * 0.12f;
+        float y = -1.35f + vy * age - 0.68f * age * age;
+        float z = vz * age;
+        float size = 0.11f + fade * 0.20f;
+        const GLfloat *color = particle_palette_gl[(i + (int)(t * 9.0f)) % 12];
+
+        glColor4f(color[0], color[1], color[2], fade * fade);
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(x - size, y - size, z);
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(x + size, y - size, z);
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(x + size, y + size, z);
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(x - size, y + size, z);
+    }
+    glEnd();
+    glDepthMask(GL_TRUE);
+}
+
 static Lesson lessons[] = {
     {"NeHe 01 - OpenGL Window", "Clear/context setup", NULL, render_01, shutdown_default, {0}, {0}},
     {"NeHe 02 - First Polygons", "Triangle and quad", NULL, render_02, shutdown_default, {0}, {0}},
@@ -1300,6 +1384,7 @@ static Lesson lessons[] = {
     {"NeHe 16 - Cool Looking Fog", "Fog over textured crates", init_texture_crate_linear, render_16, shutdown_default, {0}, {0}},
     {"NeHe 17 - 2D Texture Font", "Texture atlas font overlay", init_texture_font, render_17, shutdown_texture_font, {0}, {0}},
     {"NeHe 18 - Quadrics", "Cube and GLU-style quadric shapes", init_texture_crate_linear, render_18, shutdown_default, {0}, {0}},
+    {"NeHe 19 - Particle Engine", "Additive blended particle system", init_particle_texture, render_19, shutdown_default, {0}, {0}},
 };
 
 static int lesson_count(void)

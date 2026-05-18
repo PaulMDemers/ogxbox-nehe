@@ -1,7 +1,7 @@
 param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
-    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18"),
+    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19"),
     [double]$DelaySeconds = 12.0,
     [string]$OutputSetName = "xemu",
     [string]$EmuRoot = "",
@@ -38,7 +38,7 @@ $runXemu = Join-Path $PSScriptRoot "run_xemu.ps1"
 $lessonLabels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics"
+    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics","particle_engine"
 )
 
 Add-Type -AssemblyName System.Drawing
@@ -286,11 +286,30 @@ function Capture-XemuIso {
                     $debugBase = Join-Path $debugDir $debugName
                     $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
                 }
-                $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
-                $lastStats = Get-CaptureStats -Bitmap $bitmap
-                if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
-                    $accepted = $true
-                    break
+                $screenBitmap = New-Object System.Drawing.Bitmap $width, $height
+                $screenGraphics = [System.Drawing.Graphics]::FromImage($screenBitmap)
+                try {
+                    $screenGraphics.CopyFromScreen($point.X, $point.Y, 0, 0, $screenBitmap.Size)
+                    $screenStats = Get-CaptureStats -Bitmap $screenBitmap
+                    if (Test-CaptureLooksLikeFramebuffer -Bitmap $screenBitmap) {
+                        $graphics.DrawImage($screenBitmap, 0, 0)
+                        $lastStats = $screenStats
+                        $accepted = $true
+                        break
+                    }
+                    if ($DebugRejectedCaptures -and $attempt -eq 1) {
+                        $debugDir = Split-Path -Parent $OutPath
+                        $debugName = [System.IO.Path]::GetFileNameWithoutExtension($OutPath)
+                        $debugBase = Join-Path $debugDir $debugName
+                        $screenBitmap.Save("$debugBase.rejected-screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                    }
+                } finally {
+                    if ($screenGraphics -ne $null) {
+                        $screenGraphics.Dispose()
+                    }
+                    if ($screenBitmap -ne $null) {
+                        $screenBitmap.Dispose()
+                    }
                 }
                 Set-XemuCaptureWindow -Handle $handle
                 Start-Sleep -Milliseconds 1000

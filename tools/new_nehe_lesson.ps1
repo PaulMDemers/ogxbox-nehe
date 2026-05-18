@@ -25,6 +25,7 @@ $knownLessons = @{
     16 = @{ title = "Cool Looking Fog"; slug = "fog"; detail = "Fog blending controls" }
     17 = @{ title = "2D Texture Font"; slug = "texture_fonts"; detail = "Texture atlas font rendering" }
     18 = @{ title = "Quadrics"; slug = "quadrics"; detail = "GLU-style quadric shapes" }
+    19 = @{ title = "Particle Engine"; slug = "particle_engine"; detail = "Additive blended particles" }
 }
 
 function Convert-ToSlug {
