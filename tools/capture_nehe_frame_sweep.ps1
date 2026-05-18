@@ -2,6 +2,7 @@ param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
     [int[]]$Lessons = @(5,6,7,8,12),
+    [ValidateRange(0,600000)]
     [int[]]$Times = @(0,1000,2000,3000,4000,5000,6000),
     [double]$DelaySeconds = 8.0,
     [string]$Label = "frame_sweep",
@@ -18,7 +19,8 @@ $workCaptureSet = "xemu_frame_work"
 $captureScript = Join-Path $PSScriptRoot "capture_nehe_xemu.ps1"
 $labels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
-    "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect","display_lists"
+    "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
+    "display_lists","bitmap_fonts"
 )
 
 function Convert-ToMsysPath {
@@ -68,15 +70,17 @@ function Get-AppName {
         [int]$Lesson
     )
 
-    if ($Lesson -lt 1 -or $Lesson -gt 12) {
+    if ($Lesson -lt 1 -or $Lesson -gt $labels.Count) {
         throw "Unsupported lesson number: $Lesson"
     }
 
     $label = $labels[$Lesson - 1]
     if ($SetName -eq "nxgl") {
-        return ("{0}_nehe_nxgl_{1:D2}_{2}" -f (110 + $Lesson), $Lesson, $label)
+        $appNumber = if ($Lesson -le 12) { 110 + $Lesson } else { 200 + $Lesson }
+        return ("{0}_nehe_nxgl_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
     }
-    return ("{0}_nehe_pb_{1:D2}_{2}" -f (122 + $Lesson), $Lesson, $label)
+    $appNumber = if ($Lesson -le 12) { 122 + $Lesson } else { 300 + $Lesson }
+    return ("{0}_nehe_pb_{1:D2}_{2}" -f $appNumber, $Lesson, $label)
 }
 
 function Invoke-MsysBuild {

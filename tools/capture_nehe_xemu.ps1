@@ -1,7 +1,7 @@
 param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
-    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12"),
+    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13"),
     [double]$DelaySeconds = 12.0,
     [string]$OutputSetName = "xemu",
     [string]$EmuRoot = "",
@@ -34,6 +34,11 @@ $xemuRoot = Join-Path $EmuRoot "xemu"
 $xemuExe = Join-Path $xemuRoot "xemu.exe"
 $configPath = Join-Path $xemuRoot "xemu-local.toml"
 $runXemu = Join-Path $PSScriptRoot "run_xemu.ps1"
+$lessonLabels = @(
+    "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
+    "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
+    "display_lists","bitmap_fonts"
+)
 
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
@@ -76,9 +81,13 @@ public static class XemuCapture {
     [DllImport("user32.dll")]
     public static extern bool SetProcessDPIAware();
 
+    [DllImport("user32.dll")]
+    public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
     public const uint SWP_SHOWWINDOW = 0x0040;
     public const int SW_RESTORE = 9;
+    public const uint PW_RENDERFULLCONTENT = 0x00000002;
 }
 "@
 
@@ -157,6 +166,55 @@ function Test-CaptureLooksLikeFramebuffer {
     return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08))
 }
 
+function Copy-XemuClientToBitmap {
+    param(
+        [IntPtr]$Handle,
+        [System.Drawing.Bitmap]$Target
+    )
+
+    $clientRect = New-Object XemuCapture+RECT
+    [XemuCapture]::GetClientRect($Handle, [ref]$clientRect) | Out-Null
+    $clientPoint = New-Object XemuCapture+POINT
+    $clientPoint.X = 0
+    $clientPoint.Y = 0
+    [XemuCapture]::ClientToScreen($Handle, [ref]$clientPoint) | Out-Null
+
+    $windowRect = New-Object XemuCapture+RECT
+    [XemuCapture]::GetWindowRect($Handle, [ref]$windowRect) | Out-Null
+    $windowWidth = [Math]::Max(1, $windowRect.Right - $windowRect.Left)
+    $windowHeight = [Math]::Max(1, $windowRect.Bottom - $windowRect.Top)
+    $srcX = [Math]::Max(0, $clientPoint.X - $windowRect.Left)
+    $srcY = [Math]::Max(0, $clientPoint.Y - $windowRect.Top)
+
+    $windowBitmap = New-Object System.Drawing.Bitmap $windowWidth, $windowHeight
+    $windowGraphics = [System.Drawing.Graphics]::FromImage($windowBitmap)
+    try {
+        $hdc = $windowGraphics.GetHdc()
+        try {
+            $printed = [XemuCapture]::PrintWindow($Handle, $hdc, [XemuCapture]::PW_RENDERFULLCONTENT)
+        } finally {
+            $windowGraphics.ReleaseHdc($hdc)
+        }
+
+        if (-not $printed) {
+            return $false
+        }
+
+        $targetGraphics = [System.Drawing.Graphics]::FromImage($Target)
+        try {
+            $sourceRect = New-Object System.Drawing.Rectangle $srcX, $srcY, $Target.Width, $Target.Height
+            $targetRect = New-Object System.Drawing.Rectangle 0, 0, $Target.Width, $Target.Height
+            $targetGraphics.DrawImage($windowBitmap, $targetRect, $sourceRect, [System.Drawing.GraphicsUnit]::Pixel)
+        } finally {
+            $targetGraphics.Dispose()
+        }
+        return $true
+    } finally {
+        $windowGraphics.Dispose()
+        $windowBitmap.Dispose()
+    }
+}
+
 function Capture-XemuIso {
     param(
         [string]$Iso,
@@ -196,7 +254,9 @@ function Capture-XemuIso {
             $accepted = $false
             $lastStats = $null
             for ($attempt = 1; $attempt -le 5; ++$attempt) {
-                $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
+                if (-not (Copy-XemuClientToBitmap -Handle $handle -Target $bitmap)) {
+                    $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
+                }
                 $lastStats = Get-CaptureStats -Bitmap $bitmap
                 if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
                     $accepted = $true
@@ -241,6 +301,25 @@ function Capture-XemuIso {
     }
 }
 
+function Get-NeHeAppNumber {
+    param(
+        [string]$SetName,
+        [int]$Lesson
+    )
+
+    if ($SetName -eq "nxgl") {
+        if ($Lesson -le 12) {
+            return 110 + $Lesson
+        }
+        return 200 + $Lesson
+    }
+
+    if ($Lesson -le 12) {
+        return 122 + $Lesson
+    }
+    return 300 + $Lesson
+}
+
 $sets = switch ($Set) {
     "nxgl" { @("nxgl") }
     "pb" { @("pb") }
@@ -254,24 +333,16 @@ foreach ($setName in $sets) {
                 continue
             }
             $lesson = [int]$lessonPart.Trim()
-            if ($lesson -lt 1 -or $lesson -gt 12) {
+            if ($lesson -lt 1 -or $lesson -gt $lessonLabels.Count) {
                 throw "Unsupported lesson number: $lesson"
             }
 
+            $label = $lessonLabels[$lesson - 1]
+            $appNumber = Get-NeHeAppNumber $setName $lesson
             if ($setName -eq "nxgl") {
-                $appNumber = 110 + $lesson
-                $label = @(
-                    "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
-                    "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect","display_lists"
-                )[$lesson - 1]
-                $iso = Join-Path $isoRoot ("xbnehe_{0}_nxgl_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                $iso = Join-Path $isoRoot ("xbnehe_{0}_nehe_nxgl_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
             } else {
-                $appNumber = 122 + $lesson
-                $label = @(
-                    "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
-                    "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect","display_lists"
-                )[$lesson - 1]
-                $iso = Join-Path $isoRoot ("xbnehe_{0}_pb_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
+                $iso = Join-Path $isoRoot ("xbnehe_{0}_nehe_pb_{1:00}_{2}.iso" -f $appNumber, $lesson, $label)
             }
 
             if (-not (Test-Path $iso)) {

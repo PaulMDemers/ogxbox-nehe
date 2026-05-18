@@ -62,7 +62,7 @@ if (!(Test-Path $EepromPath) -and (Test-Path $DefaultAppDataEeprom)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Iso)) {
-    $Iso = Join-Path $Workspace "dist\release\nehe\isos\xbnehe_111_nxgl_01_window.iso"
+    $Iso = Join-Path $Workspace "dist\release\nehe\isos\xbnehe_111_nehe_nxgl_01_window.iso"
 } elseif (![System.IO.Path]::IsPathRooted($Iso)) {
     $Iso = Join-Path $Workspace $Iso
 }

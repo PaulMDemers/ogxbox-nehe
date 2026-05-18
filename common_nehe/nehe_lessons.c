@@ -1,5 +1,6 @@
 #include "nehe_lessons.h"
 #include "nehe_assets_rgba.h"
+#include "nehe_bitmap_font.h"
 #include "nehe_native.h"
 #include "nehe_scene.h"
 #include "nehe_starfield.h"
@@ -41,7 +42,8 @@ static const char *titles[NEHE_LESSON_COUNT] = {
     "NeHe 09 - moving bitmaps/starfield",
     "NeHe 10 - world walkthrough",
     "NeHe 11 - waving texture mesh",
-    "NeHe 12 - display lists"
+    "NeHe 12 - display lists",
+    "NeHe 13 - bitmap fonts"
 };
 
 static const char *details[NEHE_LESSON_COUNT] = {
@@ -56,7 +58,8 @@ static const char *details[NEHE_LESSON_COUNT] = {
     "Original star texture field",
     "Original mud texture world mesh",
     "Original tim texture waving mesh",
-    "Original cube texture repeated stack"
+    "Original cube texture repeated stack",
+    "Animated bitmap-style text"
 };
 
 static int clamp_lesson(int lesson)
@@ -290,6 +293,48 @@ static void lesson_12(float t)
     }
 }
 
+static void draw_bitmap_text_native(const char *text, float x, float y, float cell, N3Color color)
+{
+    float cursor = x;
+
+    n3_set_depth(false, false);
+    for (const char *p = text; *p != '\0'; ++p) {
+        const uint8_t *rows = nehe_font_rows(*p);
+        for (int row = 0; row < NEHE_FONT_ROWS; ++row) {
+            for (int col = 0; col < NEHE_FONT_COLS; ++col) {
+                if (nehe_font_row_has_pixel(rows, row, col)) {
+                    n3_draw_quad(cursor + ((float)col + 0.5f) * cell,
+                                 y - ((float)row + 0.5f) * cell,
+                                 0.0f,
+                                 cell * 0.43f,
+                                 cell * 0.43f,
+                                 0.0f,
+                                 color);
+                }
+            }
+        }
+        cursor += cell * 6.0f;
+    }
+    n3_set_depth(true, true);
+}
+
+static void lesson_13(float t)
+{
+    float cnt1 = t * 0.60f;
+    float cnt2 = t * 0.486f;
+    N3Color color = {
+        fmaxf(0.0f, cosf(cnt1)),
+        fmaxf(0.0f, sinf(cnt2)),
+        fmaxf(0.0f, fminf(1.0f, 1.0f - 0.5f * cosf(cnt1 + cnt2))),
+        1.0f
+    };
+    float x = -0.80f + 0.35f * cosf(cnt1);
+    float y = 0.08f + 0.35f * sinf(cnt2);
+
+    n3_set_camera(0.0f, 0.0f, -3.0f, 0.0f, 0.0f, 0.0f);
+    draw_bitmap_text_native("OpenGL With NeHe", x, y, 0.017f, color);
+}
+
 void nehe_lesson_render(int lesson, float t)
 {
     n3_set_projection(NEHE_FOV_Y_DEGREES, NEHE_NEAR_Z, NEHE_FAR_Z);
@@ -308,6 +353,7 @@ void nehe_lesson_render(int lesson, float t)
     case 9: lesson_10(t); break;
     case 10: lesson_11(t); break;
     case 11: lesson_12(t); break;
+    case 12: lesson_13(t); break;
     }
 }
 
