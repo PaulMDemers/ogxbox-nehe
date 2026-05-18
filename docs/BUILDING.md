@@ -45,6 +45,19 @@ make -C 117_nehe_nxgl_07_filters_lighting
 make -C 129_nehe_pb_07_filters_lighting
 ```
 
+## Scaffold A New Lesson
+
+Use the scaffold helper after adding the lesson implementation to
+`common_nehe`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\new_nehe_lesson.ps1 -Lesson 13 -UpdateMakefile
+```
+
+Lessons after 12 use separate numbering bands by default (`2xx` for NXGL and
+`3xx` for PBKit) so new NXGL lesson numbers do not collide with the released
+PBKit lesson 1-12 directories.
+
 ## Release Artifacts
 
 ```sh
