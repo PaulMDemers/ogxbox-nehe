@@ -4,6 +4,7 @@ param(
     [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19"),
     [double]$DelaySeconds = 12.0,
     [string]$OutputSetName = "xemu",
+    [string]$IsoRoot = "",
     [string]$EmuRoot = "",
     [ValidateRange(1,10)]
     [int]$LaunchAttempts = 3,
@@ -14,7 +15,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..")
-$isoRoot = Join-Path $repo "dist\release\nehe\isos"
+if ([string]::IsNullOrWhiteSpace($IsoRoot)) {
+    $isoRoot = Join-Path $repo "dist\release\nehe\isos"
+} else {
+    $isoRoot = (Resolve-Path $IsoRoot).Path
+}
 $captureRoot = Join-Path $repo (Join-Path "dist\nehe_reference\captures" $OutputSetName)
 
 if ([string]::IsNullOrWhiteSpace($EmuRoot)) {

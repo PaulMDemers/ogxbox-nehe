@@ -18,6 +18,7 @@ $repo = Resolve-Path (Join-Path $PSScriptRoot "..")
 $workspace = Split-Path -Parent $repo
 $outRoot = Join-Path $repo (Join-Path "dist\nehe_reference\captures\xemu_frames" $Label)
 $workCaptureSet = "xemu_frame_work"
+$workIsoRoot = Join-Path $repo (Join-Path "dist\nehe_reference\captures" (Join-Path $workCaptureSet "isos"))
 $captureScript = Join-Path $PSScriptRoot "capture_nehe_xemu.ps1"
 $labels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
@@ -154,8 +155,7 @@ function Invoke-MsysBuild {
         "export NXDK_DIR='$nxdkMsys'",
         "export PATH='$nxdkMsys/bin:$nxdkMsys/tools/cg/win:/mingw64/bin:/usr/bin:'`$PATH",
         "make -C '$AppName' clean >/dev/null",
-        "make -C '$AppName' NEHE_CAPTURE_FIXED_TIME_MS=$TimeMs >/dev/null",
-        "./tools/collect_release_isos.sh >/dev/null"
+        "make -C '$AppName' NEHE_CAPTURE_FIXED_TIME_MS=$TimeMs >/dev/null"
     ) -join "`n"
 
     $previousErrorActionPreference = $ErrorActionPreference
@@ -171,6 +171,14 @@ function Invoke-MsysBuild {
         Write-Host ($output -join "`n")
         throw "Timed NeHe build failed for $AppName at ${TimeMs}ms"
     }
+
+    $iso = Get-ChildItem -LiteralPath (Join-Path $repo $AppName) -Filter "*.iso" | Select-Object -First 1
+    if ($null -eq $iso) {
+        throw "Timed NeHe build did not produce an ISO for $AppName at ${TimeMs}ms"
+    }
+
+    New-Item -ItemType Directory -Force -Path $workIsoRoot | Out-Null
+    Copy-Item -LiteralPath $iso.FullName -Destination (Join-Path $workIsoRoot $iso.Name) -Force
 }
 
 $sets = switch ($Set) {
@@ -198,6 +206,7 @@ foreach ($setName in $sets) {
                 DelaySeconds = $DelaySeconds
                 LaunchAttempts = $LaunchAttempts
                 OutputSetName = $workCaptureSet
+                IsoRoot = $workIsoRoot
             }
             if ($DebugRejectedCaptures) {
                 $captureArgs.DebugRejectedCaptures = $true

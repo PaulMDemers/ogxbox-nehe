@@ -466,7 +466,7 @@ static void draw_pyramid(void)
     glEnd();
 }
 
-static void draw_cube(bool textured)
+static void draw_cube_shaded(bool textured, const GLfloat *face_shade)
 {
     static const GLfloat faces[6][4][3] = {
         {{ 1, 1,-1}, {-1, 1,-1}, {-1, 1, 1}, { 1, 1, 1}},
@@ -487,8 +487,9 @@ static void draw_cube(bool textured)
 
     glBegin(GL_QUADS);
     for (int f = 0; f < 6; ++f) {
-        if (textured) {
-        } else {
+        if (face_shade) {
+            glColor3f(face_shade[f], face_shade[f], face_shade[f]);
+        } else if (!textured) {
             glColor3fv(colors[f]);
         }
         glNormal3fv(normals[f]);
@@ -500,6 +501,50 @@ static void draw_cube(bool textured)
         }
     }
     glEnd();
+}
+
+static void draw_cube(bool textured)
+{
+    draw_cube_shaded(textured, NULL);
+}
+
+static void rotate_axis_angle_vec3(const GLfloat in[3], GLfloat angle, GLfloat ax, GLfloat ay, GLfloat az, GLfloat out[3])
+{
+    GLfloat len = sqrtf(ax * ax + ay * ay + az * az);
+    if (len <= 0.000001f) {
+        out[0] = in[0];
+        out[1] = in[1];
+        out[2] = in[2];
+        return;
+    }
+
+    ax /= len;
+    ay /= len;
+    az /= len;
+
+    GLfloat c = cosf(angle);
+    GLfloat s = sinf(angle);
+    GLfloat one_c = 1.0f - c;
+
+    out[0] = (c + ax * ax * one_c) * in[0] + (ax * ay * one_c - az * s) * in[1] + (ax * az * one_c + ay * s) * in[2];
+    out[1] = (ay * ax * one_c + az * s) * in[0] + (c + ay * ay * one_c) * in[1] + (ay * az * one_c - ax * s) * in[2];
+    out[2] = (az * ax * one_c - ay * s) * in[0] + (az * ay * one_c + ax * s) * in[1] + (c + az * az * one_c) * in[2];
+}
+
+static void lesson_07_face_shade(float t, GLfloat shade[6])
+{
+    static const GLfloat normals[6][3] = {
+        {0.0f, 1.0f, 0.0f}, {0.0f,-1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},
+        {0.0f, 0.0f,-1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f},
+    };
+    GLfloat angle = t * 42.0f * NEHE_DEG_TO_RAD;
+
+    for (int i = 0; i < 6; ++i) {
+        GLfloat normal[3];
+        rotate_axis_angle_vec3(normals[i], angle, 1.0f, 1.0f, 0.0f, normal);
+        GLfloat diffuse = normal[2] > 0.0f ? normal[2] : 0.0f;
+        shade[i] = 0.2f + diffuse * 0.8f;
+    }
 }
 
 static void draw_textured_floor(float z)
@@ -766,25 +811,22 @@ static void render_06(Lesson *lesson, float t)
 
 static void render_07(Lesson *lesson, float t)
 {
-    GLfloat light_pos[] = {0.0f, 0.0f, 2.0f, 1.0f};
-    GLfloat diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    GLfloat shade[6];
     int use_linear = ((int)(t * 1.25f) & 1);
 
+    lesson_07_face_shade(t, shade);
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, lesson->textures[use_linear ? 1 : 0]);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glEnable(GL_COLOR_MATERIAL);
-    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
-    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_LIGHT0);
+    glDisable(GL_COLOR_MATERIAL);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
     glTranslatef(0.0f, 0.0f, NEHE_DEFAULT_VIEW_Z);
     glRotatef(t * 42.0f, 1.0f, 1.0f, 0.0f);
     glColor3f(1.0f, 1.0f, 1.0f);
     glEnable(GL_CULL_FACE);
-    draw_cube(true);
+    draw_cube_shaded(true, shade);
     glDisable(GL_CULL_FACE);
 }
 
