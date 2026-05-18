@@ -2,13 +2,30 @@ param(
     [string]$Iso = "",
     [switch]$FullScreen,
     [switch]$NoSnapshot,
-    [switch]$NoStart
+    [switch]$NoStart,
+    [string]$EmuRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
 
 $Workspace = Split-Path -Parent $PSScriptRoot
-$EmuRoot = Join-Path $Workspace "Xbox-Emulator-Files"
+
+if ([string]::IsNullOrWhiteSpace($EmuRoot)) {
+    $Candidates = @(
+        (Join-Path $Workspace "Xbox-Emulator-Files"),
+        (Join-Path (Split-Path -Parent $Workspace) "Xbox-Emulator-Files")
+    )
+    foreach ($Candidate in $Candidates) {
+        if (Test-Path (Join-Path $Candidate "xemu\xemu.exe")) {
+            $EmuRoot = $Candidate
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($EmuRoot)) {
+        $EmuRoot = $Candidates[0]
+    }
+}
+
 $XemuDir = Join-Path $EmuRoot "xemu"
 $XemuExe = Join-Path $XemuDir "xemu.exe"
 $DownloadZip = Join-Path $EmuRoot "xemu-0.8.134-windows-x86_64.zip"

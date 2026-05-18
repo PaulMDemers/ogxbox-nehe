@@ -2,15 +2,35 @@ param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
     [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12"),
-    [double]$DelaySeconds = 12.0
+    [double]$DelaySeconds = 12.0,
+    [string]$OutputSetName = "xemu",
+    [string]$EmuRoot = "",
+    [switch]$DebugRejectedCaptures
 )
 
 $ErrorActionPreference = "Stop"
 
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..")
 $isoRoot = Join-Path $repo "dist\release\nehe\isos"
-$captureRoot = Join-Path $repo "dist\nehe_reference\captures\xemu"
-$xemuRoot = Join-Path $repo "Xbox-Emulator-Files\xemu"
+$captureRoot = Join-Path $repo (Join-Path "dist\nehe_reference\captures" $OutputSetName)
+
+if ([string]::IsNullOrWhiteSpace($EmuRoot)) {
+    $emuCandidates = @(
+        (Join-Path $repo "Xbox-Emulator-Files"),
+        (Join-Path (Split-Path -Parent $repo) "Xbox-Emulator-Files")
+    )
+    foreach ($candidate in $emuCandidates) {
+        if (Test-Path (Join-Path $candidate "xemu\xemu.exe")) {
+            $EmuRoot = $candidate
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($EmuRoot)) {
+        $EmuRoot = $emuCandidates[0]
+    }
+}
+
+$xemuRoot = Join-Path $EmuRoot "xemu"
 $xemuExe = Join-Path $xemuRoot "xemu.exe"
 $configPath = Join-Path $xemuRoot "xemu-local.toml"
 $runXemu = Join-Path $PSScriptRoot "run_xemu.ps1"
@@ -37,6 +57,9 @@ public static class XemuCapture {
 
     [DllImport("user32.dll")]
     public static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
 
     [DllImport("user32.dll")]
     public static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
@@ -85,24 +108,39 @@ function Set-XemuCaptureWindow {
     [XemuCapture]::SetForegroundWindow($Handle) | Out-Null
 }
 
-function Test-CaptureLooksLikeXemu {
+function Get-CaptureStats {
     param([System.Drawing.Bitmap]$Bitmap)
 
     $samples = 0
     $total = 0.0
+    $nonDark = 0
     for ($y = 0; $y -lt $Bitmap.Height; $y += 16) {
         for ($x = 0; $x -lt $Bitmap.Width; $x += 16) {
             $pixel = $Bitmap.GetPixel($x, $y)
-            $total += ($pixel.R + $pixel.G + $pixel.B) / 3.0
+            $value = ($pixel.R + $pixel.G + $pixel.B) / 3.0
+            $total += $value
+            if ($value -gt 12.0) {
+                $nonDark++
+            }
             $samples++
         }
     }
 
     if ($samples -eq 0) {
-        return $false
+        $samples = 1
     }
 
-    return (($total / $samples) -lt 130.0)
+    return [ordered]@{
+        mean_brightness = $total / $samples
+        non_dark_ratio = $nonDark / $samples
+    }
+}
+
+function Test-CaptureLooksLikeFramebuffer {
+    param([System.Drawing.Bitmap]$Bitmap)
+
+    $stats = Get-CaptureStats -Bitmap $Bitmap
+    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002))
 }
 
 function Capture-XemuIso {
@@ -111,7 +149,7 @@ function Capture-XemuIso {
         [string]$OutPath
     )
 
-    & powershell -ExecutionPolicy Bypass -File $runXemu -Iso $Iso -NoStart | Out-Null
+    & powershell -ExecutionPolicy Bypass -File $runXemu -Iso $Iso -NoStart -EmuRoot $EmuRoot | Out-Null
     if (-not (Test-Path $xemuExe)) {
         throw "xemu executable not found: $xemuExe"
     }
@@ -140,15 +178,41 @@ function Capture-XemuIso {
         $bitmap = New-Object System.Drawing.Bitmap $width, $height
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
         try {
-            $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutPath) | Out-Null
-            if (-not (Test-CaptureLooksLikeXemu -Bitmap $bitmap)) {
-                Set-XemuCaptureWindow -Handle $handle
-                Start-Sleep -Milliseconds 750
+            $accepted = $false
+            $lastStats = $null
+            for ($attempt = 1; $attempt -le 5; ++$attempt) {
                 $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
+                $lastStats = Get-CaptureStats -Bitmap $bitmap
+                if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
+                    $accepted = $true
+                    break
+                }
+                Set-XemuCaptureWindow -Handle $handle
+                Start-Sleep -Milliseconds 1000
             }
-            if (-not (Test-CaptureLooksLikeXemu -Bitmap $bitmap)) {
-                throw "Capture does not look like the xemu framebuffer; refusing to save desktop/window-manager content."
+            if (-not $accepted) {
+                if ($DebugRejectedCaptures) {
+                    $debugDir = Split-Path -Parent $OutPath
+                    $debugName = [System.IO.Path]::GetFileNameWithoutExtension($OutPath)
+                    $debugBase = Join-Path $debugDir $debugName
+                    $bitmap.Save("$debugBase.rejected-client.png", [System.Drawing.Imaging.ImageFormat]::Png)
+
+                    $windowRect = New-Object XemuCapture+RECT
+                    [XemuCapture]::GetWindowRect($handle, [ref]$windowRect) | Out-Null
+                    $windowWidth = [Math]::Max(1, $windowRect.Right - $windowRect.Left)
+                    $windowHeight = [Math]::Max(1, $windowRect.Bottom - $windowRect.Top)
+                    $windowBitmap = New-Object System.Drawing.Bitmap $windowWidth, $windowHeight
+                    $windowGraphics = [System.Drawing.Graphics]::FromImage($windowBitmap)
+                    try {
+                        $windowGraphics.CopyFromScreen($windowRect.Left, $windowRect.Top, 0, 0, $windowBitmap.Size)
+                        $windowBitmap.Save("$debugBase.rejected-window.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                    } finally {
+                        $windowGraphics.Dispose()
+                        $windowBitmap.Dispose()
+                    }
+                }
+                throw ("Capture does not look like a rendered xemu framebuffer; refusing to save it. mean_brightness={0:N2} non_dark_ratio={1:N4}" -f $lastStats.mean_brightness, $lastStats.non_dark_ratio)
             }
             $bitmap.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
             Write-Host "Captured $OutPath"

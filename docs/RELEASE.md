@@ -28,5 +28,12 @@ Expected release output:
 
 ## Visual Check
 
-Use the capture helpers in `tools/` to compare Windows reference captures, NXGL
-xemu captures, and PBKit xemu captures.
+Use the verified visual wrapper to compare Windows reference captures, NXGL
+xemu captures, and PBKit xemu captures:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_visuals.ps1 -SkipBuild
+```
+
+The xemu capture helper runs lessons serially and rejects blank or obvious
+desktop/window-manager captures before writing the PNGs.
