@@ -5,6 +5,7 @@
 #include "../common_nehe/nehe_outline_font.h"
 #include "../common_nehe/nehe_scene.h"
 #include "../common_nehe/nehe_starfield.h"
+#include "../common_nehe/nehe_texture_font.h"
 #include "../common_nehe/nehe_world_data.h"
 
 #include <math.h>
@@ -57,6 +58,7 @@ static uint8_t checker_pixels[64 * 64 * 4];
 static uint8_t crate_pixels[64 * 64 * 4];
 static uint8_t star_pixels[32 * 32 * 4];
 static uint8_t world_pixels[64 * 64 * 4];
+static uint8_t font_pixels[NEHE_TEXTURE_FONT_SIZE * NEHE_TEXTURE_FONT_SIZE * 4];
 
 #ifndef NEHE_STANDALONE_LESSON_INDEX
 static int current_lesson = 1;
@@ -355,6 +357,8 @@ static void flush_reset_viewport_boundary(void)
 
 static void make_textures(void)
 {
+    nehe_texture_font_fill_rgba(font_pixels);
+
     for (int y = 0; y < 64; ++y) {
         for (int x = 0; x < 64; ++x) {
             int i = (y * 64 + x) * 4;
@@ -630,6 +634,12 @@ static void init_display_lists(Lesson *lesson)
     glEndList();
 }
 
+static void init_texture_font(Lesson *lesson)
+{
+    lesson->textures[0] = upload_texture(NEHE_TEXTURE_FONT_SIZE, NEHE_TEXTURE_FONT_SIZE, font_pixels, GL_LINEAR);
+    lesson->textures[1] = upload_texture(NEHE_ASSET_CUBE_W, NEHE_ASSET_CUBE_H, nehe_asset_cube_rgba, GL_LINEAR);
+}
+
 static void shutdown_default(Lesson *lesson)
 {
     for (int i = 0; i < 4; ++i) {
@@ -641,6 +651,20 @@ static void shutdown_default(Lesson *lesson)
             glDeleteLists(lesson->lists[i], i == 0 ? 2 : 1);
             lesson->lists[i] = 0;
         }
+    }
+}
+
+static void shutdown_texture_font(Lesson *lesson)
+{
+    for (int i = 0; i < 4; ++i) {
+        if (lesson->textures[i] != 0) {
+            glDeleteTextures(1, &lesson->textures[i]);
+            lesson->textures[i] = 0;
+        }
+    }
+    if (lesson->lists[0] != 0) {
+        glDeleteLists(lesson->lists[0], 256);
+        lesson->lists[0] = 0;
     }
 }
 
@@ -1021,6 +1045,98 @@ static void render_16(Lesson *lesson, float t)
     draw_fogged_crate_gl(lesson, 1.25f, -2.9f, angle);
 }
 
+static void draw_lesson_17_object_gl(Lesson *lesson, float t)
+{
+    glDisable(GL_BLEND);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, lesson->textures[1]);
+    glEnable(GL_DEPTH_TEST);
+    glLoadIdentity();
+    glTranslatef(0.0f, 0.0f, -5.0f);
+    glRotatef(45.0f, 0.0f, 0.0f, 1.0f);
+    glRotatef(t * 30.0f, 1.0f, 1.0f, 0.0f);
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f, 0.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f, 0.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f, -1.0f, 0.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
+    glEnd();
+
+    glRotatef(90.0f, 1.0f, 1.0f, 0.0f);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f, 0.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f, 0.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f, -1.0f, 0.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f, 0.0f);
+    glEnd();
+}
+
+static void print_texture_font_gl(Lesson *lesson, int x, int y, const char *text, int set)
+{
+    float cursor = (float)x;
+
+    if (set > 1) {
+        set = 1;
+    }
+    glBindTexture(GL_TEXTURE_2D, lesson->textures[0]);
+    glDisable(GL_DEPTH_TEST);
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, (double)NEHE_SCREEN_W, 0.0, (double)NEHE_SCREEN_H, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    glBegin(GL_QUADS);
+    for (const char *p = text; *p != '\0'; ++p) {
+        float u0, v0, u1, v1;
+
+        nehe_texture_font_uv((unsigned char)*p, set, &u0, &v0, &u1, &v1);
+        glTexCoord2f(u0, v0); glVertex3f(cursor, (float)y, 0.0f);
+        glTexCoord2f(u1, v0); glVertex3f(cursor + 16.0f, (float)y, 0.0f);
+        glTexCoord2f(u1, v1); glVertex3f(cursor + 16.0f, (float)y + 16.0f, 0.0f);
+        glTexCoord2f(u0, v1); glVertex3f(cursor, (float)y + 16.0f, 0.0f);
+        cursor += 10.0f;
+    }
+    glEnd();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    glEnable(GL_DEPTH_TEST);
+}
+
+static void render_17(Lesson *lesson, float t)
+{
+    float cnt1 = t * 0.60f;
+    float cnt2 = t * 0.486f;
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    draw_lesson_17_object_gl(lesson, t);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glLoadIdentity();
+
+    glColor3f(fmaxf(0.0f, cosf(cnt1)),
+              fmaxf(0.0f, sinf(cnt2)),
+              fmaxf(0.0f, fminf(1.0f, 1.0f - 0.5f * cosf(cnt1 + cnt2))));
+    print_texture_font_gl(lesson, (int)(280.0f + 250.0f * cosf(cnt1)),
+                          (int)(235.0f + 200.0f * sinf(cnt2)), "NeHe", 0);
+
+    glColor3f(fmaxf(0.0f, sinf(cnt2)),
+              fmaxf(0.0f, fminf(1.0f, 1.0f - 0.5f * cosf(cnt1 + cnt2))),
+              fmaxf(0.0f, cosf(cnt1)));
+    print_texture_font_gl(lesson, (int)(280.0f + 230.0f * cosf(cnt2)),
+                          (int)(235.0f + 200.0f * sinf(cnt1)), "OpenGL", 1);
+
+    glColor3f(0.0f, 0.0f, 1.0f);
+    print_texture_font_gl(lesson, (int)(240.0f + 200.0f * cosf((cnt1 + cnt2) / 5.0f)), 2, "Giuseppe D'Agata", 0);
+    glColor3f(1.0f, 1.0f, 1.0f);
+    print_texture_font_gl(lesson, (int)(242.0f + 200.0f * cosf((cnt1 + cnt2) / 5.0f)), 4, "Giuseppe D'Agata", 0);
+}
+
 static Lesson lessons[] = {
     {"NeHe 01 - OpenGL Window", "Clear/context setup", NULL, render_01, shutdown_default, {0}, {0}},
     {"NeHe 02 - First Polygons", "Triangle and quad", NULL, render_02, shutdown_default, {0}, {0}},
@@ -1038,6 +1154,7 @@ static Lesson lessons[] = {
     {"NeHe 14 - Outline Fonts", "Spinning outline text", NULL, render_14, shutdown_default, {0}, {0}},
     {"NeHe 15 - Texture Outline Fonts", "Textured outline symbol", init_lights_texture, render_15, shutdown_default, {0}, {0}},
     {"NeHe 16 - Cool Looking Fog", "Fog over textured crates", init_texture_crate_linear, render_16, shutdown_default, {0}, {0}},
+    {"NeHe 17 - 2D Texture Font", "Texture atlas font overlay", init_texture_font, render_17, shutdown_texture_font, {0}, {0}},
 };
 
 static int lesson_count(void)
