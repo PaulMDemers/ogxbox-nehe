@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define NEHE_LESSON_COUNT 14
+#define NEHE_LESSON_COUNT 15
 
 int nehe_lessons_init(void);
 void nehe_lessons_shutdown(void);

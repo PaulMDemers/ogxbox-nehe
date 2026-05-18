@@ -524,7 +524,7 @@ static void draw_bitmap_text_quads(const char *text, float x, float y, float z, 
     glEnd();
 }
 
-static void outline_vertex(float x, float y, float z, float rot)
+static void outline_vertex_at(float x, float y, float z, float rot, float view_z)
 {
     float rx = rot * NEHE_DEG_TO_RAD;
     float ry = rot * 1.2f * NEHE_DEG_TO_RAD;
@@ -539,7 +539,12 @@ static void outline_vertex(float x, float y, float z, float rot)
     float x3 = x2 * cz - y1 * sz;
     float y3 = x2 * sz + y1 * cz;
 
-    glVertex3f(x3, y3, z2 - 16.0f);
+    glVertex3f(x3, y3, z2 + view_z);
+}
+
+static void outline_vertex(float x, float y, float z, float rot)
+{
+    outline_vertex_at(x, y, z, rot, -16.0f);
 }
 
 static void draw_outline_pixel_quads(float x0, float y0, float x1, float y1, float z, float depth, float rot)
@@ -592,6 +597,11 @@ static void init_texture_glass(Lesson *lesson)
 }
 
 static void init_star_texture(Lesson *lesson)
+{
+    lesson->textures[0] = upload_texture(NEHE_ASSET_STAR_W, NEHE_ASSET_STAR_H, nehe_asset_star_rgba, GL_LINEAR);
+}
+
+static void init_lights_texture(Lesson *lesson)
 {
     lesson->textures[0] = upload_texture(NEHE_ASSET_STAR_W, NEHE_ASSET_STAR_H, nehe_asset_star_rgba, GL_LINEAR);
 }
@@ -900,6 +910,63 @@ static void render_14(Lesson *lesson, float t)
     draw_outline_text_quads("OpenGL With NeHe", 0.080f, 0.12f, rot);
 }
 
+static void draw_textured_symbol_pixel(float x0, float y0, float x1, float y1, float z, float rot,
+                                       float u0, float v0, float u1, float v1)
+{
+    glTexCoord2f(u0, v0);
+    outline_vertex_at(x0, y0, z, rot, -5.6f);
+    glTexCoord2f(u1, v0);
+    outline_vertex_at(x1, y0, z, rot, -5.6f);
+    glTexCoord2f(u1, v1);
+    outline_vertex_at(x1, y1, z, rot, -5.6f);
+    glTexCoord2f(u0, v1);
+    outline_vertex_at(x0, y1, z, rot, -5.6f);
+}
+
+static void draw_textured_skull_quads(float ox, float oy, float rot)
+{
+    const float cell = 0.145f;
+    float left = ox - (float)NEHE_SYMBOL_COLS * cell * 0.5f;
+    float top = oy + (float)NEHE_SYMBOL_ROWS * cell * 0.5f;
+
+    glBegin(GL_QUADS);
+    for (int row = 0; row < NEHE_SYMBOL_ROWS; ++row) {
+        for (int col = 0; col < NEHE_SYMBOL_COLS; ++col) {
+            if (nehe_skull_outline_pixel(row, col)) {
+                float x0 = left + (float)col * cell;
+                float y0 = top - (float)row * cell;
+                float x1 = x0 + cell * 0.94f;
+                float y1 = y0 - cell * 0.94f;
+                float u0 = (float)col / (float)NEHE_SYMBOL_COLS;
+                float v0 = (float)row / (float)NEHE_SYMBOL_ROWS;
+                float u1 = (float)(col + 1) / (float)NEHE_SYMBOL_COLS;
+                float v1 = (float)(row + 1) / (float)NEHE_SYMBOL_ROWS;
+
+                draw_textured_symbol_pixel(x0, y0, x1, y1, -0.10f, rot, u0, v0, u1, v1);
+                draw_textured_symbol_pixel(x0, y0, x1, y1, 0.0f, rot, u0, v0, u1, v1);
+            }
+        }
+    }
+    glEnd();
+}
+
+static void render_15(Lesson *lesson, float t)
+{
+    float rot = t * 55.0f;
+    float x = sinf(t * 0.7f) * 0.35f;
+    float y = cosf(t * 0.5f) * 0.22f;
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, lesson->textures[0]);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDisable(GL_CULL_FACE);
+    glLoadIdentity();
+    glColor3f(1.0f, 1.0f, 1.0f);
+    draw_textured_skull_quads(x, y, rot);
+}
+
 static Lesson lessons[] = {
     {"NeHe 01 - OpenGL Window", "Clear/context setup", NULL, render_01, shutdown_default, {0}, {0}},
     {"NeHe 02 - First Polygons", "Triangle and quad", NULL, render_02, shutdown_default, {0}, {0}},
@@ -915,6 +982,7 @@ static Lesson lessons[] = {
     {"NeHe 12 - Display Lists", "Textured cube list stack", init_display_lists, render_12, shutdown_default, {0}, {0}},
     {"NeHe 13 - Bitmap Fonts", "Animated bitmap text", NULL, render_13, shutdown_default, {0}, {0}},
     {"NeHe 14 - Outline Fonts", "Spinning outline text", NULL, render_14, shutdown_default, {0}, {0}},
+    {"NeHe 15 - Texture Outline Fonts", "Textured outline symbol", init_lights_texture, render_15, shutdown_default, {0}, {0}},
 };
 
 static int lesson_count(void)

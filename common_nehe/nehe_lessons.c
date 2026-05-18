@@ -45,7 +45,8 @@ static const char *titles[NEHE_LESSON_COUNT] = {
     "NeHe 11 - waving texture mesh",
     "NeHe 12 - display lists",
     "NeHe 13 - bitmap fonts",
-    "NeHe 14 - outline fonts"
+    "NeHe 14 - outline fonts",
+    "NeHe 15 - texture mapped outline fonts"
 };
 
 static const char *details[NEHE_LESSON_COUNT] = {
@@ -62,7 +63,8 @@ static const char *details[NEHE_LESSON_COUNT] = {
     "Original tim texture waving mesh",
     "Original cube texture repeated stack",
     "Animated bitmap-style text",
-    "3D outline-style text"
+    "3D outline-style text",
+    "Texture mapped outline symbol"
 };
 
 static int clamp_lesson(int lesson)
@@ -408,6 +410,57 @@ static void lesson_14(float t)
     draw_outline_text_native("OpenGL With NeHe", rot, color);
 }
 
+static void push_textured_symbol_pixel(float x0, float y0, float x1, float y1, float z, float rot,
+                                       float u0, float v0, float u1, float v1)
+{
+    N3Color white = { 1.0f, 1.0f, 1.0f, 1.0f };
+    N3Vertex a = { rotate_lesson_14_point(x0, y0, z, rot), white, u0, v0 };
+    N3Vertex b = { rotate_lesson_14_point(x1, y0, z, rot), white, u1, v0 };
+    N3Vertex c = { rotate_lesson_14_point(x1, y1, z, rot), white, u1, v1 };
+    N3Vertex d = { rotate_lesson_14_point(x0, y1, z, rot), white, u0, v1 };
+
+    n3_push_quad(a, b, c, d);
+}
+
+static void draw_textured_skull_native(float ox, float oy, float rot)
+{
+    const float cell = 0.145f;
+    const float depth = 0.10f;
+    float left = ox - (float)NEHE_SYMBOL_COLS * cell * 0.5f;
+    float top = oy + (float)NEHE_SYMBOL_ROWS * cell * 0.5f;
+
+    n3_set_depth(true, true);
+    n3_set_cull(false);
+    for (int row = 0; row < NEHE_SYMBOL_ROWS; ++row) {
+        for (int col = 0; col < NEHE_SYMBOL_COLS; ++col) {
+            if (nehe_skull_outline_pixel(row, col)) {
+                float x0 = left + (float)col * cell;
+                float y0 = top - (float)row * cell;
+                float x1 = x0 + cell * 0.94f;
+                float y1 = y0 - cell * 0.94f;
+                float u0 = (float)col / (float)NEHE_SYMBOL_COLS;
+                float v0 = (float)row / (float)NEHE_SYMBOL_ROWS;
+                float u1 = (float)(col + 1) / (float)NEHE_SYMBOL_COLS;
+                float v1 = (float)(row + 1) / (float)NEHE_SYMBOL_ROWS;
+
+                push_textured_symbol_pixel(x0, y0, x1, y1, -depth, rot, u0, v0, u1, v1);
+                push_textured_symbol_pixel(x0, y0, x1, y1, 0.0f, rot, u0, v0, u1, v1);
+            }
+        }
+    }
+}
+
+static void lesson_15(float t)
+{
+    float rot = t * 55.0f;
+    float x = sinf(t * 0.7f) * 0.35f;
+    float y = cosf(t * 0.5f) * 0.22f;
+
+    n3_bind_texture(&star_texture);
+    n3_set_camera(0.0f, 0.0f, -5.6f, 0.0f, 0.0f, 0.0f);
+    draw_textured_skull_native(x, y, rot);
+}
+
 void nehe_lesson_render(int lesson, float t)
 {
     n3_set_projection(NEHE_FOV_Y_DEGREES, NEHE_NEAR_Z, NEHE_FAR_Z);
@@ -428,6 +481,7 @@ void nehe_lesson_render(int lesson, float t)
     case 11: lesson_12(t); break;
     case 12: lesson_13(t); break;
     case 13: lesson_14(t); break;
+    case 14: lesson_15(t); break;
     }
 }
 
