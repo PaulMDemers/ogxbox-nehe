@@ -345,6 +345,13 @@ static void scene_reset_gl(void)
     drain_gl_errors();
 }
 
+static void frame_reset_gl(void)
+{
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    nxglSetCamera(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+}
+
 static void flush_reset_viewport_boundary(void)
 {
     scene_reset_gl();
@@ -1515,7 +1522,7 @@ int main(void)
         prev_was_down = prev_down;
         next_was_down = next_down;
 
-        scene_reset_gl();
+        frame_reset_gl();
         lessons[current_lesson].render(&lessons[current_lesson], t);
         snprintf(title, sizeof(title), "NXGL NeHe %02d/%02d  White/Black", current_lesson + 1, lesson_count());
         snprintf(detail, sizeof(detail), "%s | %s", lessons[current_lesson].title, lessons[current_lesson].detail);
@@ -1549,7 +1556,7 @@ int main(void)
         char detail[128];
         float t = nehe_frame_seconds(lesson_start);
 
-        scene_reset_gl();
+        frame_reset_gl();
         lessons[lesson].render(&lessons[lesson], t);
         snprintf(title, sizeof(title), "NXGL NeHe %02d standalone", lesson + 1);
         snprintf(detail, sizeof(detail), "%s | %s", lessons[lesson].title, lessons[lesson].detail);

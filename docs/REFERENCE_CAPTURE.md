@@ -124,3 +124,18 @@ powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_regression_set.ps1 
 ```
 
 Captured output is written under `dist/nehe_reference/captures`.
+
+## Capture Performance Overlays
+
+To compare warmed frame pacing in xemu, build selected lessons with the optional
+performance overlay and capture them serially:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\capture_nehe_perf_overlay.ps1 -Lessons 7,19
+```
+
+This compiles with `NEHE_PERF_OVERLAY=1`, avoids stale app objects that were
+built without the overlay, launches xemu without snapshots, and writes captures
+under `dist/nehe_reference/captures/xemu_perf_overlay`. The overlay reuses the
+existing `vertices=` row and appends rolling average frame time and FPS, so
+normal release/reference builds are unchanged unless the flag is passed.

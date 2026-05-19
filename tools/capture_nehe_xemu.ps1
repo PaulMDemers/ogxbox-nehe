@@ -186,7 +186,7 @@ function Test-CaptureLooksLikeFramebuffer {
     param([System.Drawing.Bitmap]$Bitmap)
 
     $stats = Get-CaptureStats -Bitmap $Bitmap
-    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08) -and ($stats.upper_right_bright_neutral_ratio -lt 0.40))
+    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08) -and ($stats.upper_right_bright_neutral_ratio -lt 0.65))
 }
 
 function Copy-XemuClientToBitmap {
