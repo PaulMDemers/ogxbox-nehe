@@ -237,6 +237,27 @@ function Copy-XemuClientToBitmap {
     }
 }
 
+function Copy-XemuScreenClientToBitmap {
+    param(
+        [IntPtr]$Handle,
+        [System.Drawing.Bitmap]$Target
+    )
+
+    $clientRect = New-Object XemuCapture+RECT
+    [XemuCapture]::GetClientRect($Handle, [ref]$clientRect) | Out-Null
+    $clientPoint = New-Object XemuCapture+POINT
+    $clientPoint.X = 0
+    $clientPoint.Y = 0
+    [XemuCapture]::ClientToScreen($Handle, [ref]$clientPoint) | Out-Null
+
+    $targetGraphics = [System.Drawing.Graphics]::FromImage($Target)
+    try {
+        $targetGraphics.CopyFromScreen($clientPoint.X, $clientPoint.Y, 0, 0, $Target.Size)
+    } finally {
+        $targetGraphics.Dispose()
+    }
+}
+
 function Capture-XemuIso {
     param(
         [string]$Iso,
@@ -270,15 +291,10 @@ function Capture-XemuIso {
 
                 $rect = New-Object XemuCapture+RECT
                 [XemuCapture]::GetClientRect($handle, [ref]$rect) | Out-Null
-                $point = New-Object XemuCapture+POINT
-                $point.X = 0
-                $point.Y = 0
-                [XemuCapture]::ClientToScreen($handle, [ref]$point) | Out-Null
 
                 $width = [Math]::Max(1, $rect.Right - $rect.Left)
                 $height = [Math]::Max(1, $rect.Bottom - $rect.Top)
                 $bitmap = New-Object System.Drawing.Bitmap $width, $height
-                $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
                 try {
                     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutPath) | Out-Null
                     $debugDir = Split-Path -Parent $OutPath
@@ -288,40 +304,29 @@ function Capture-XemuIso {
                     $accepted = $false
                     $lastStats = $null
                     for ($attempt = 1; $attempt -le 5; ++$attempt) {
-                        if (-not (Copy-XemuClientToBitmap -Handle $handle -Target $bitmap)) {
-                            $graphics.CopyFromScreen($point.X, $point.Y, 0, 0, $bitmap.Size)
-                        }
+                        Set-XemuCaptureWindow -Handle $handle
+                        Start-Sleep -Milliseconds 150
+                        Copy-XemuScreenClientToBitmap -Handle $handle -Target $bitmap
                         $lastStats = Get-CaptureStats -Bitmap $bitmap
                         if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
                             $accepted = $true
                             break
                         }
                         if ($DebugRejectedCaptures -and $attempt -eq 1) {
-                            $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
+                            $bitmap.Save("$debugBase.rejected-screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
                         }
-                        $screenBitmap = New-Object System.Drawing.Bitmap $width, $height
-                        $screenGraphics = [System.Drawing.Graphics]::FromImage($screenBitmap)
-                        try {
-                            $screenGraphics.CopyFromScreen($point.X, $point.Y, 0, 0, $screenBitmap.Size)
-                            $screenStats = Get-CaptureStats -Bitmap $screenBitmap
-                            if (Test-CaptureLooksLikeFramebuffer -Bitmap $screenBitmap) {
-                                $graphics.DrawImage($screenBitmap, 0, 0)
-                                $lastStats = $screenStats
+
+                        if (Copy-XemuClientToBitmap -Handle $handle -Target $bitmap) {
+                            $lastStats = Get-CaptureStats -Bitmap $bitmap
+                            if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
                                 $accepted = $true
                                 break
                             }
                             if ($DebugRejectedCaptures -and $attempt -eq 1) {
-                                $screenBitmap.Save("$debugBase.rejected-screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
-                            }
-                        } finally {
-                            if ($screenGraphics -ne $null) {
-                                $screenGraphics.Dispose()
-                            }
-                            if ($screenBitmap -ne $null) {
-                                $screenBitmap.Dispose()
+                                $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
                             }
                         }
-                        Set-XemuCaptureWindow -Handle $handle
+
                         Start-Sleep -Milliseconds 1000
                     }
                     if (-not $accepted) {
@@ -349,7 +354,6 @@ function Capture-XemuIso {
                         return
                     }
                 } finally {
-                    $graphics.Dispose()
                     $bitmap.Dispose()
                 }
             } finally {
