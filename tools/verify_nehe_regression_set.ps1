@@ -11,6 +11,7 @@ param(
     [switch]$DebugRejectedCaptures,
     [switch]$SkipSweep,
     [switch]$XemuOnly,
+    [switch]$ResumeExisting,
     [switch]$AllowWarnings
 )
 
@@ -76,6 +77,9 @@ if (-not $SkipSweep) {
     }
     if ($DebugRejectedCaptures) {
         $sweepArgs.DebugRejectedCaptures = $true
+    }
+    if ($ResumeExisting) {
+        $sweepArgs.ResumeExisting = $true
     }
     & (Join-Path $PSScriptRoot "capture_nehe_frame_sweep.ps1") @sweepArgs
 }

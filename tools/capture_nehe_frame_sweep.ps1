@@ -9,7 +9,8 @@ param(
     [string]$Label = "frame_sweep",
     [string]$NxdkDir = "",
     [switch]$DebugRejectedCaptures,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$ResumeExisting
 )
 
 $ErrorActionPreference = "Stop"
@@ -199,6 +200,20 @@ foreach ($setName in $sets) {
         New-Item -ItemType Directory -Force -Path $lessonDir | Out-Null
 
         foreach ($time in $timeList) {
+            $dst = Join-Path $lessonDir ("{0}_{1:D2}_{2:D5}ms.png" -f $setName, $lesson, $time)
+            if ($ResumeExisting -and (Test-Path $dst)) {
+                Write-Host "Skipping existing capture $dst"
+                $results += [ordered]@{
+                    set = $setName
+                    lesson = $lesson
+                    fixed_time_ms = $time
+                    app = $appName
+                    path = $dst
+                    resumed = $true
+                }
+                continue
+            }
+
             Invoke-MsysBuild $appName $time
             $captureArgs = @{
                 Set = $setName
@@ -218,7 +233,6 @@ foreach ($setName in $sets) {
                 throw "Expected capture was not written: $src"
             }
 
-            $dst = Join-Path $lessonDir ("{0}_{1:D2}_{2:D5}ms.png" -f $setName, $lesson, $time)
             Copy-Item -LiteralPath $src -Destination $dst -Force
             Write-Host "Captured $dst"
             $results += [ordered]@{
@@ -240,6 +254,7 @@ $manifest = [ordered]@{
     delay_seconds = $DelaySeconds
     launch_attempts = $LaunchAttempts
     label = $Label
+    resume_existing = [bool]$ResumeExisting
     captures = $results
 }
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $outRoot "manifest.json") -Encoding ASCII

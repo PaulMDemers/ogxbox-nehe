@@ -89,6 +89,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\capture_nehe_frame_sweep.ps1 -S
 
 The sweep writes PNGs and a `manifest.json` under
 `dist/nehe_reference/captures/xemu_frames/<label>`.
+If a long sweep is interrupted, rerun the same command with
+`-ResumeExisting` to skip fixed-time PNGs already present in that folder.
 
 For the standard cube/display-list regression set, use the regression wrapper.
 It runs a fixed-time xemu sweep, stages the frames into a normal capture set,
@@ -113,7 +115,7 @@ For lessons that do not yet have Windows reference captures, use `-XemuOnly`
 to compare NXGL and PBKit captures directly:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_regression_set.ps1 -Lessons 13,14,15,16,17,18,19 -TimeMs 2500 -CaptureSetName xemu_regression_13_19_2500 -XemuOnly
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_regression_set.ps1 -Lessons 13,14,15,16,17,18,19 -TimeMs 2500 -CaptureSetName xemu_regression_13_19_2500 -XemuOnly -ResumeExisting
 ```
 
 Captured output is written under `dist/nehe_reference/captures`.
