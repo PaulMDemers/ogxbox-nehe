@@ -2,6 +2,7 @@ param(
     [string]$Iso = "",
     [switch]$FullScreen,
     [switch]$NoSnapshot,
+    [switch]$UseSnapshot,
     [switch]$NoStart,
     [string]$EmuRoot = ""
 )
@@ -92,7 +93,7 @@ hdd_path = '$HddPath'
 Set-Content -Path $ConfigPath -Value $Config -Encoding ASCII
 
 $Arguments = @("-config_path", $ConfigPath, "-dvd_path", $Iso)
-if (!$NoSnapshot) {
+if ($UseSnapshot -and !$NoSnapshot) {
     $Arguments += "-snapshot"
 }
 if ($FullScreen) {

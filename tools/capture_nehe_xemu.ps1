@@ -9,6 +9,7 @@ param(
     [ValidateRange(1,10)]
     [int]$LaunchAttempts = 3,
     [switch]$NoSnapshot,
+    [switch]$UseSnapshot,
     [switch]$DebugRejectedCaptures
 )
 
@@ -273,7 +274,7 @@ function Capture-XemuIso {
     }
 
     $args = @("-config_path", $configPath, "-dvd_path", $Iso)
-    if (-not $NoSnapshot) {
+    if ($UseSnapshot -and -not $NoSnapshot) {
         $args += "-snapshot"
     }
     $lastFailure = $null

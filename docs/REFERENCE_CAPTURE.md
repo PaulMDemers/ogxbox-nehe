@@ -40,6 +40,11 @@ capture in a fresh xemu process. If a run is flaky, increase
 `-LaunchAttempts` and add `-DebugRejectedCaptures` to save rejected
 PrintWindow/screen frames next to the intended output.
 
+The xemu helpers do not use `-snapshot` by default. This keeps repeated
+single-ISO captures from accidentally resuming an older guest state. Pass
+`-UseSnapshot` only for interactive local runs where resume speed matters more
+than strict capture isolation.
+
 The wrapper writes fresh xemu captures to
 `dist/nehe_reference/captures/xemu_verified` and comparison sheets to
 `dist/nehe_reference/captures/compare`.

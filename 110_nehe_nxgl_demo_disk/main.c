@@ -1489,6 +1489,7 @@ int main(void)
         Sleep(3000);
         return 1;
     }
+    nxglSetReadbackEnabled(GL_FALSE);
     make_textures();
     input_init();
     enter_lesson(current_lesson);
@@ -1532,6 +1533,7 @@ int main(void)
         Sleep(3000);
         return 1;
     }
+    nxglSetReadbackEnabled(GL_FALSE);
     make_textures();
 
     scene_reset_gl();
