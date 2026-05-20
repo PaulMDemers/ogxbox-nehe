@@ -8,7 +8,8 @@ and build cleanup.
 - Keep NXGL implementation changes in the `nxgl` repository.
 - Keep this repository focused on NeHe demos, PBKit comparisons, and capture
   tooling.
-- Preserve the standalone lesson numbering.
+- Preserve the standalone lesson numbering. The classic NeHe sequence is lessons
+  1-48; later experiments should be named and documented as supplemental demos.
 - Do not commit generated `.inl`, `.obj`, `.d`, `.exe`, `.xbe`, `.iso`, or
   `dist/` output.
 - When changing rendering behavior, compare against Windows reference captures

@@ -17,6 +17,7 @@ $ErrorActionPreference = "Stop"
 $repo = Resolve-Path (Join-Path $PSScriptRoot "..")
 $makefilePath = Join-Path $repo "Makefile"
 $lessonsHeaderPath = Join-Path $repo "common_nehe\nehe_lessons.h"
+$classicLessonCount = 48
 
 $knownLessons = @{
     13 = @{ title = "Bitmap Fonts"; slug = "bitmap_fonts"; detail = "Bitmap font text rendering" }
@@ -154,6 +155,9 @@ if ([string]::IsNullOrWhiteSpace($Detail) -and $knownLessons.ContainsKey($Lesson
     $Detail = $knownLessons[$Lesson].detail
 }
 if ([string]::IsNullOrWhiteSpace($Title)) {
+    if ($Lesson -gt $classicLessonCount) {
+        throw "Pass -Title for supplemental demos after the classic NeHe lesson 48 ceiling."
+    }
     throw "Pass -Title for lessons that are not in the built-in metadata map."
 }
 if ([string]::IsNullOrWhiteSpace($Slug)) {
@@ -165,7 +169,7 @@ if ([string]::IsNullOrWhiteSpace($Detail)) {
 
 $lessonCount = Get-LessonCount
 if ($Lesson -gt $lessonCount -and -not $AllowMissingImplementation) {
-    throw "NEHE_LESSON_COUNT is $lessonCount. Implement common_nehe lesson $Lesson first or pass -AllowMissingImplementation to create wrappers only."
+    throw "NEHE_LESSON_COUNT is $lessonCount. The classic NeHe sequence ends at $classicLessonCount in this repository; implement common_nehe lesson $Lesson first or pass -AllowMissingImplementation for an explicitly supplemental wrapper."
 }
 if ($Lesson -gt $lessonCount -and $UpdateMakefile -and -not $AllowMissingImplementation) {
     throw "Refusing to add lesson $Lesson to the build before common_nehe implements it."

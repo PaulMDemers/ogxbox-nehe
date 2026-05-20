@@ -1,7 +1,8 @@
 # PBKit Baseline
 
-The `123_nehe_pb_*` through `134_nehe_pb_*` lessons are retained as native PBKit
-reference ports for lessons 1 through 12.
+The `123_nehe_pb_*` through `134_nehe_pb_*` and `313_nehe_pb_*` through
+`348_nehe_pb_*` lessons are retained as native PBKit reference ports for the
+classic NeHe lessons 1 through 48.
 
 They are not intended to grow into a separate demo framework. Their purpose is
 to answer one question quickly: does a visual issue appear only in the NXGL path,

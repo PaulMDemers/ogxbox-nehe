@@ -4,9 +4,9 @@ The repository contains two standalone lesson families.
 
 ## NXGL Lessons
 
-`111_nehe_nxgl_*` through `122_nehe_nxgl_*` are OpenGL-style ports. Each lesson
-defines a standalone lesson index and includes the shared source in
-`110_nehe_nxgl_demo_disk/main.c`.
+`111_nehe_nxgl_*` through `122_nehe_nxgl_*`, and `213_nehe_nxgl_*` through
+`248_nehe_nxgl_*`, are OpenGL-style ports. Each lesson defines a standalone
+lesson index and includes the shared source in `110_nehe_nxgl_demo_disk/main.c`.
 
 These lessons link against NXGL through a sibling checkout:
 
@@ -17,11 +17,12 @@ include $(NXGL_DIR)/nxgl.mk
 
 ## PBKit Lessons
 
-`123_nehe_pb_*` through `134_nehe_pb_*` render directly through the native PBKit
-helper layer in `common_nehe/`. They are intentionally kept as reference
-implementations, not as a second feature surface. Their job is to provide a
-native-renderer baseline when comparing NXGL behavior against the original
-Windows NeHe output and xemu captures.
+`123_nehe_pb_*` through `134_nehe_pb_*`, and `313_nehe_pb_*` through
+`348_nehe_pb_*`, render directly through the native PBKit helper layer in
+`common_nehe/`. They are intentionally kept as reference implementations, not
+as a second feature surface. Their job is to provide a native-renderer baseline
+when comparing NXGL behavior against the original Windows NeHe output and xemu
+captures.
 
 ## Shared Code
 
@@ -32,10 +33,13 @@ Windows NeHe output and xemu captures.
 
 ## Lesson Numbering
 
-The default release includes 24 standalone builds:
+The default release includes 96 standalone builds:
 
-- NXGL lessons 1-12: directories `111` through `122`.
-- PBKit lessons 1-12: directories `123` through `134`.
+- NXGL lessons 1-48: directories `111`-`122` and `213`-`248`.
+- PBKit lessons 1-48: directories `123`-`134` and `313`-`348`.
 
 The `110_nehe_nxgl_demo_disk` directory is retained only as shared source for
 the standalone NXGL lesson wrappers.
+
+The classic NeHe tutorial index ends at lesson 48. Additional experiments should
+be treated as supplemental demos rather than numbered official lessons.

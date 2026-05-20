@@ -4,12 +4,15 @@ Standalone ports of the classic NeHe OpenGL tutorials for the original Xbox.
 The collection exists both as a demo set and as a visual compatibility harness
 for NXGL.
 
-This repository contains two implementations of lessons 1 through 12:
+This repository contains two implementations of the classic NeHe tutorial
+sequence, lessons 1 through 48:
 
-- `111_nehe_nxgl_*` through `122_nehe_nxgl_*`: GL-style ports that build on
-  NXGL from a sibling checkout.
-- `123_nehe_pb_*` through `134_nehe_pb_*`: PBKit/native ports used as a direct
-  renderer comparison and visual baseline.
+- `111_nehe_nxgl_*` through `122_nehe_nxgl_*`, then `213_nehe_nxgl_*`
+  through `248_nehe_nxgl_*`: GL-style ports that build on NXGL from a sibling
+  checkout.
+- `123_nehe_pb_*` through `134_nehe_pb_*`, then `313_nehe_pb_*` through
+  `348_nehe_pb_*`: PBKit/native ports used as a direct renderer comparison and
+  visual baseline.
 
 `110_nehe_nxgl_demo_disk` remains as shared source for the NXGL standalone
 lessons, but it is not part of the default release build.
@@ -41,7 +44,7 @@ Release artifacts are collected under:
 - `dist/release/nehe/isos`
 - `dist/release/nehe/xbes`
 
-The default release contains 24 standalone builds: 12 NXGL lessons and 12 PBKit
+The default release contains 96 standalone builds: 48 NXGL lessons and 48 PBKit
 lessons.
 
 ## Documentation
@@ -59,8 +62,9 @@ lessons.
 ## Attribution
 
 The demos are based on the historic NeHe OpenGL tutorial sequence. This project
-contains original Xbox ports and compatibility scaffolding; the classic tutorial
-material remains credited to NeHe and its original authors.
+contains original Xbox ports and compatibility scaffolding. The classic
+tutorial sequence ends at lesson 48, and the tutorial material remains credited
+to NeHe and its original authors.
 
 ## License
 

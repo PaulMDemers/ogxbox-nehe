@@ -45,18 +45,21 @@ make -C 117_nehe_nxgl_07_filters_lighting
 make -C 129_nehe_pb_07_filters_lighting
 ```
 
-## Scaffold A New Lesson
+## Scaffold Supplemental Demos
 
-Use the scaffold helper after adding the lesson implementation to
+The official classic NeHe tutorial sequence ends at lesson 48, and the current
+repository covers that full set. The scaffold helper remains available for
+explicitly named supplemental demos after adding the implementation to
 `common_nehe`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\new_nehe_lesson.ps1 -Lesson 13 -UpdateMakefile
+powershell -ExecutionPolicy Bypass -File .\tools\new_nehe_lesson.ps1 -Lesson 49 -Title "Supplemental Demo" -Slug supplemental_demo -UpdateMakefile
 ```
 
 Lessons after 12 use separate numbering bands by default (`2xx` for NXGL and
-`3xx` for PBKit) so new NXGL lesson numbers do not collide with the released
-PBKit lesson 1-12 directories.
+`3xx` for PBKit) so NXGL lesson numbers do not collide with the PBKit lesson
+1-12 directories. Anything beyond 48 should be named and documented as a
+supplemental demo.
 
 ## Release Artifacts
 

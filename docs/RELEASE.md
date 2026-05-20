@@ -23,8 +23,8 @@ make
 
 Expected release output:
 
-- 24 ISO files in `dist/release/nehe/isos`
-- 24 XBE folders in `dist/release/nehe/xbes`
+- 96 ISO files in `dist/release/nehe/isos`
+- 96 XBE folders in `dist/release/nehe/xbes`
 
 ## Visual Check
 
@@ -36,4 +36,5 @@ powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_visuals.ps1 -SkipBu
 ```
 
 The xemu capture helper runs lessons serially and rejects blank or obvious
-desktop/window-manager captures before writing the PNGs.
+desktop/window-manager captures before writing the PNGs. The capture helper also
+crops xemu's menu bar when it appears in client-area captures.
