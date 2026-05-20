@@ -7,6 +7,8 @@ param(
     [int]$FocusTileWidth = 480,
     [int]$FocusTileHeight = 336,
     [double]$MinNonDarkRatio = 0.002,
+    [int]$MinCaptureWidth = 320,
+    [int]$MinCaptureHeight = 240,
     [switch]$Strict
 )
 
@@ -258,6 +260,8 @@ try {
         generated_at = (Get-Date).ToString("o")
         thresholds = [ordered]@{
             min_non_dark_sample_ratio = $MinNonDarkRatio
+            min_capture_width = $MinCaptureWidth
+            min_capture_height = $MinCaptureHeight
         }
         warnings = @()
         lessons = @()
@@ -277,6 +281,11 @@ try {
 
         foreach ($name in @("nxgl", "pb")) {
             $stats = $lessonStats[$name]
+            $width = [int]$stats["width"]
+            $height = [int]$stats["height"]
+            if ($width -lt $MinCaptureWidth -or $height -lt $MinCaptureHeight) {
+                $manifest.warnings += "lesson $lesson $name capture has invalid dimensions: ${width}x${height}"
+            }
             $nonDarkRatio = [double]$stats["non_dark_sample_ratio"]
             if ($nonDarkRatio -lt $MinNonDarkRatio) {
                 $manifest.warnings += "lesson $lesson $name capture looks mostly blank: non_dark_sample_ratio=$nonDarkRatio"

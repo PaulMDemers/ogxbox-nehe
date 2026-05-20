@@ -81,6 +81,7 @@ void n3_set_cull(bool enabled);
 void n3_set_cull_mode(uint32_t face, uint32_t front_face);
 void n3_set_blend_func(uint32_t sfactor, uint32_t dfactor);
 void n3_set_scissor(bool enabled, int x, int y, int width, int height);
+void n3_set_viewport(int x, int y, int width, int height);
 void n3_set_projection(float fov_y_degrees, float near_z, float far_z);
 void n3_set_camera(float x, float y, float z, float rx, float ry, float rz);
 void n3_push_triangle(N3Vertex a, N3Vertex b, N3Vertex c);

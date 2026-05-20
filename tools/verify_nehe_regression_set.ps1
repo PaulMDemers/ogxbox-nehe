@@ -22,7 +22,12 @@ $captureRoot = Join-Path $repo "dist\nehe_reference\captures"
 $labels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics","particle_engine"
+    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics","particle_engine",
+    "masking","lines_timing_ortho","bump_mapping","sphere_mapping","tokens_scissor_tga",
+    "morphing_loading_objects","stencil_reflections","shadows","bezier_patches","blitter_raw_textures",
+    "collision_detection","model_loading","picking_sorting","tga_variants","height_map_terrain",
+    "avi_texture_playback","radial_blur","cel_shading","resource_textures","physics_simulation","rope_physics",
+    "volumetric_fog","multiple_viewports","freetype_fonts","lens_flare","vertex_buffers","antialiasing","vertex_shader","arcball_rotation"
 )
 
 function Convert-ToLessonList {

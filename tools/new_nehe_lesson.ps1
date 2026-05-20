@@ -26,6 +26,35 @@ $knownLessons = @{
     17 = @{ title = "2D Texture Font"; slug = "texture_fonts"; detail = "Texture atlas font rendering" }
     18 = @{ title = "Quadrics"; slug = "quadrics"; detail = "GLU-style quadric shapes" }
     19 = @{ title = "Particle Engine"; slug = "particle_engine"; detail = "Additive blended particles" }
+    20 = @{ title = "Masking"; slug = "masking"; detail = "Two-pass texture masking" }
+    21 = @{ title = "Lines Timing Ortho"; slug = "lines_timing_ortho"; detail = "Timed antialiased line patterns" }
+    22 = @{ title = "Bump Mapping"; slug = "bump_mapping"; detail = "Embossed multitexture-style cube" }
+    23 = @{ title = "Sphere Mapping"; slug = "sphere_mapping"; detail = "Environment mapped sphere" }
+    24 = @{ title = "Tokens Scissor TGA"; slug = "tokens_scissor_tga"; detail = "Scissor panes and TGA-style texture" }
+    25 = @{ title = "Morphing Loading Objects"; slug = "morphing_loading_objects"; detail = "Point-cloud morphing between objects" }
+    26 = @{ title = "Stencil Reflections"; slug = "stencil_reflections"; detail = "Reflected cube over clipped floor" }
+    27 = @{ title = "Shadows"; slug = "shadows"; detail = "Planar shadow projection" }
+    28 = @{ title = "Bezier Patches"; slug = "bezier_patches"; detail = "Textured Bezier-style patch" }
+    29 = @{ title = "Blitter Raw Textures"; slug = "blitter_raw_textures"; detail = "Procedural raw texture blits" }
+    30 = @{ title = "Collision Detection"; slug = "collision_detection"; detail = "Moving sphere/cube collision volume" }
+    31 = @{ title = "Model Loading"; slug = "model_loading"; detail = "Loaded-style low-poly model mesh" }
+    32 = @{ title = "Picking Sorting"; slug = "picking_sorting"; detail = "Sorted transparent selection panes" }
+    33 = @{ title = "TGA Variants"; slug = "tga_variants"; detail = "Texture loader format comparison" }
+    34 = @{ title = "Height Map Terrain"; slug = "height_map_terrain"; detail = "Procedural landscape height field" }
+    35 = @{ title = "AVI Texture Playback"; slug = "avi_texture_playback"; detail = "Procedural video texture stream" }
+    36 = @{ title = "Radial Blur"; slug = "radial_blur"; detail = "Layered render-to-texture style blur" }
+    37 = @{ title = "Cel Shading"; slug = "cel_shading"; detail = "Quantized lighting and outlines" }
+    38 = @{ title = "Resource Textures"; slug = "resource_textures"; detail = "Packed resource texture atlas" }
+    39 = @{ title = "Physics Simulation"; slug = "physics_simulation"; detail = "Spring-mass field simulation" }
+    40 = @{ title = "Rope Physics"; slug = "rope_physics"; detail = "Segmented rope simulation" }
+    41 = @{ title = "Volumetric Fog"; slug = "volumetric_fog"; detail = "Layered translucent fog volume" }
+    42 = @{ title = "Multiple Viewports"; slug = "multiple_viewports"; detail = "Four isolated viewport scenes" }
+    43 = @{ title = "FreeType Fonts"; slug = "freetype_fonts"; detail = "Smooth glyph extrusion stand-in" }
+    44 = @{ title = "Lens Flare"; slug = "lens_flare"; detail = "Billboard flare and occluder pass" }
+    45 = @{ title = "Vertex Buffers"; slug = "vertex_buffers"; detail = "Streaming vertex field batches" }
+    46 = @{ title = "Antialiasing"; slug = "antialiasing"; detail = "Subpixel line and edge smoothing" }
+    47 = @{ title = "Vertex Shader"; slug = "vertex_shader"; detail = "Animated shader-style deformation" }
+    48 = @{ title = "ArcBall Rotation"; slug = "arcball_rotation"; detail = "Trackball-controlled object rotation" }
 }
 
 function Convert-ToSlug {

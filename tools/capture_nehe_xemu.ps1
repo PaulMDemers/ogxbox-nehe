@@ -1,7 +1,7 @@
 param(
     [ValidateSet("nxgl","pb","all")]
     [string]$Set = "all",
-    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19"),
+    [string[]]$Lessons = @("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48"),
     [double]$DelaySeconds = 12.0,
     [string]$OutputSetName = "xemu",
     [string]$IsoRoot = "",
@@ -46,7 +46,12 @@ $runXemu = Join-Path $PSScriptRoot "run_xemu.ps1"
 $lessonLabels = @(
     "window","first_polygons","color","rotation","3d_shapes","texture_mapping",
     "filters_lighting","blending","moving_bitmaps","3d_world","flag_effect",
-    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics","particle_engine"
+    "display_lists","bitmap_fonts","outline_fonts","texture_mapped_outline_fonts","fog","texture_fonts","quadrics","particle_engine",
+    "masking","lines_timing_ortho","bump_mapping","sphere_mapping","tokens_scissor_tga",
+    "morphing_loading_objects","stencil_reflections","shadows","bezier_patches","blitter_raw_textures",
+    "collision_detection","model_loading","picking_sorting","tga_variants","height_map_terrain",
+    "avi_texture_playback","radial_blur","cel_shading","resource_textures","physics_simulation","rope_physics",
+    "volumetric_fog","multiple_viewports","freetype_fonts","lens_flare","vertex_buffers","antialiasing","vertex_shader","arcball_rotation"
 )
 
 Add-Type -AssemblyName System.Drawing
@@ -93,10 +98,28 @@ public static class XemuCapture {
     [DllImport("user32.dll")]
     public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
 
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
     public const uint SWP_SHOWWINDOW = 0x0040;
     public const int SW_RESTORE = 9;
     public const uint PW_RENDERFULLCONTENT = 0x00000002;
+    public const uint WM_CLOSE = 0x0010;
 }
 "@
 
@@ -124,6 +147,36 @@ function Set-XemuCaptureWindow {
     [XemuCapture]::ShowWindow($Handle, [XemuCapture]::SW_RESTORE) | Out-Null
     [XemuCapture]::SetWindowPos($Handle, [XemuCapture]::HWND_TOPMOST, 20, 20, 800, 600, [XemuCapture]::SWP_SHOWWINDOW) | Out-Null
     [XemuCapture]::SetForegroundWindow($Handle) | Out-Null
+}
+
+function Close-XemuUpdateDialogs {
+    param([System.Diagnostics.Process]$Process)
+
+    $targetPid = [uint32]$Process.Id
+    $callback = [XemuCapture+EnumWindowsProc]{
+        param([IntPtr]$hWnd, [IntPtr]$lParam)
+
+        $windowPid = [uint32]0
+        [XemuCapture]::GetWindowThreadProcessId($hWnd, [ref]$windowPid) | Out-Null
+        if ($windowPid -ne $targetPid) {
+            return $true
+        }
+
+        $length = [XemuCapture]::GetWindowTextLength($hWnd)
+        if ($length -le 0) {
+            return $true
+        }
+
+        $builder = New-Object System.Text.StringBuilder ($length + 1)
+        [XemuCapture]::GetWindowText($hWnd, $builder, $builder.Capacity) | Out-Null
+        $title = $builder.ToString()
+        if ($title -match '(?i)update|newer version|version of xemu') {
+            [XemuCapture]::PostMessage($hWnd, [XemuCapture]::WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+        }
+        return $true
+    }
+
+    [XemuCapture]::EnumWindows($callback, [IntPtr]::Zero) | Out-Null
 }
 
 function Get-CaptureStats {
@@ -185,8 +238,63 @@ function Get-CaptureStats {
 function Test-CaptureLooksLikeFramebuffer {
     param([System.Drawing.Bitmap]$Bitmap)
 
+    if ($Bitmap.Width -lt 320 -or $Bitmap.Height -lt 240) {
+        return $false
+    }
+
     $stats = Get-CaptureStats -Bitmap $Bitmap
-    return (($stats.mean_brightness -lt 130.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08) -and ($stats.upper_right_bright_neutral_ratio -lt 0.65))
+    return (($stats.mean_brightness -lt 220.0) -and ($stats.non_dark_ratio -gt 0.002) -and ($stats.corner_bright_neutral_ratio -lt 0.08) -and ($stats.upper_right_bright_neutral_ratio -lt 0.65))
+}
+
+function Get-RowMeanBrightness {
+    param(
+        [System.Drawing.Bitmap]$Bitmap,
+        [int]$Y
+    )
+
+    $yClamped = [Math]::Max(0, [Math]::Min($Bitmap.Height - 1, $Y))
+    $samples = 0
+    $total = 0.0
+    for ($x = 0; $x -lt $Bitmap.Width; $x += 8) {
+        $pixel = $Bitmap.GetPixel($x, $yClamped)
+        $total += ($pixel.R + $pixel.G + $pixel.B) / 3.0
+        $samples++
+    }
+    if ($samples -eq 0) {
+        return 0.0
+    }
+    return $total / $samples
+}
+
+function Remove-XemuMenuBarIfPresent {
+    param([System.Drawing.Bitmap]$Bitmap)
+
+    if ($Bitmap.Height -le 260) {
+        return $Bitmap
+    }
+
+    $row0 = Get-RowMeanBrightness -Bitmap $Bitmap -Y 0
+    $row10 = Get-RowMeanBrightness -Bitmap $Bitmap -Y 10
+    $row20 = Get-RowMeanBrightness -Bitmap $Bitmap -Y 20
+    $row24 = Get-RowMeanBrightness -Bitmap $Bitmap -Y 24
+
+    $hasMenuBar = (($row0 -gt 20.0) -and ($row10 -gt 30.0) -and ($row20 -gt 20.0) -and ($row24 -lt ($row10 - 15.0)))
+    if (-not $hasMenuBar) {
+        return $Bitmap
+    }
+
+    $cropTop = 22
+    $cropRect = New-Object System.Drawing.Rectangle 0, $cropTop, $Bitmap.Width, ($Bitmap.Height - $cropTop)
+    $cropped = New-Object System.Drawing.Bitmap $cropRect.Width, $cropRect.Height
+    $graphics = [System.Drawing.Graphics]::FromImage($cropped)
+    try {
+        $targetRect = New-Object System.Drawing.Rectangle 0, 0, $cropped.Width, $cropped.Height
+        $graphics.DrawImage($Bitmap, $targetRect, $cropRect, [System.Drawing.GraphicsUnit]::Pixel)
+    } finally {
+        $graphics.Dispose()
+    }
+    $Bitmap.Dispose()
+    return $cropped
 }
 
 function Copy-XemuClientToBitmap {
@@ -274,7 +382,7 @@ function Capture-XemuIso {
     }
 
     $args = @("-config_path", $configPath, "-dvd_path", $Iso)
-    if ($UseSnapshot -and -not $NoSnapshot) {
+    if (-not $NoSnapshot) {
         $args += "-snapshot"
     }
     $lastFailure = $null
@@ -287,6 +395,7 @@ function Capture-XemuIso {
                 $handle = Get-MainWindowHandle -Process $proc
                 Set-XemuCaptureWindow -Handle $handle
                 Start-Sleep -Milliseconds ([int]($DelaySeconds * 1000))
+                Close-XemuUpdateDialogs -Process $proc
                 Set-XemuCaptureWindow -Handle $handle
                 Start-Sleep -Milliseconds 750
 
@@ -305,6 +414,7 @@ function Capture-XemuIso {
                     $accepted = $false
                     $lastStats = $null
                     for ($attempt = 1; $attempt -le 5; ++$attempt) {
+                        Close-XemuUpdateDialogs -Process $proc
                         Set-XemuCaptureWindow -Handle $handle
                         Start-Sleep -Milliseconds 150
                         Copy-XemuScreenClientToBitmap -Handle $handle -Target $bitmap
@@ -317,15 +427,8 @@ function Capture-XemuIso {
                             $bitmap.Save("$debugBase.rejected-screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
                         }
 
-                        if (Copy-XemuClientToBitmap -Handle $handle -Target $bitmap) {
-                            $lastStats = Get-CaptureStats -Bitmap $bitmap
-                            if (Test-CaptureLooksLikeFramebuffer -Bitmap $bitmap) {
-                                $accepted = $true
-                                break
-                            }
-                            if ($DebugRejectedCaptures -and $attempt -eq 1) {
-                                $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
-                            }
+                        if ($DebugRejectedCaptures -and $attempt -eq 1 -and (Copy-XemuClientToBitmap -Handle $handle -Target $bitmap)) {
+                            $bitmap.Save("$debugBase.rejected-printwindow.png", [System.Drawing.Imaging.ImageFormat]::Png)
                         }
 
                         Start-Sleep -Milliseconds 1000
@@ -350,6 +453,7 @@ function Capture-XemuIso {
                         }
                         $lastFailure = ("Capture does not look like a rendered xemu framebuffer on launch attempt {0}/{1}; refusing to save it. mean_brightness={2:N2} non_dark_ratio={3:N4} corner_bright_neutral_ratio={4:N4} upper_right_bright_neutral_ratio={5:N4}" -f $launchAttempt, $LaunchAttempts, $lastStats.mean_brightness, $lastStats.non_dark_ratio, $lastStats.corner_bright_neutral_ratio, $lastStats.upper_right_bright_neutral_ratio)
                     } else {
+                        $bitmap = Remove-XemuMenuBarIfPresent -Bitmap $bitmap
                         $bitmap.Save($OutPath, [System.Drawing.Imaging.ImageFormat]::Png)
                         Write-Host "Captured $OutPath"
                         return
