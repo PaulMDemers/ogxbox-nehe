@@ -49,6 +49,13 @@ The wrapper writes fresh xemu captures to
 `dist/nehe_reference/captures/xemu_verified` and comparison sheets to
 `dist/nehe_reference/captures/compare`.
 
+Before a full capture pass, run the fast layout audit to catch missing lesson
+directories, numbering drift, or stale release artifacts without launching xemu:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_coverage.ps1
+```
+
 The Xbox build/capture helpers prefer the devkitPro MSYS2 shell at
 `C:\devkitPro\msys2\usr\bin\bash.exe`. A generic `C:\msys64` shell may have
 the right executable name but the wrong nxdk/devkit environment.

@@ -26,6 +26,12 @@ Expected release output:
 - 96 ISO files in `dist/release/nehe/isos`
 - 96 XBE folders in `dist/release/nehe/xbes`
 
+Run the coverage audit before handing off release artifacts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_coverage.ps1 -CheckReleaseArtifacts
+```
+
 ## Visual Check
 
 Use the verified visual wrapper to compare Windows reference captures, NXGL

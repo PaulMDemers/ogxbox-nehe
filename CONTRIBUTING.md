@@ -30,3 +30,9 @@ For release-facing changes:
 make
 ./tools/collect_release_isos.sh
 ```
+
+Then audit the lesson layout and staged release artifacts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\verify_nehe_coverage.ps1 -CheckReleaseArtifacts
+```
