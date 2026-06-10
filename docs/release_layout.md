@@ -37,8 +37,9 @@ The NeHe release group contains:
 - `123` through `134` and `313` through `348` are standalone PBKit baseline
   lesson disks.
 
-Each PBKit lesson owns a local `nehe_lessons.c` copy so lesson-specific native
-rendering fixes stay isolated. `common_nehe` still provides the PBKit helper
-code, assets, shaders, and template implementation used for new lessons. NXGL
-standalone wrappers include `110_nehe_nxgl_demo_disk/main.c`. The classic NeHe
-set ends at lesson 48; supplemental demos should use a separate naming scheme.
+Each PBKit lesson owns a trimmed local `nehe_lessons.c` implementation so
+lesson-specific native rendering fixes stay isolated. `common_nehe` still
+provides the PBKit helper code, assets, shaders, and template implementation
+used for new lessons. NXGL standalone wrappers include
+`110_nehe_nxgl_demo_disk/main.c`. The classic NeHe set ends at lesson 48;
+supplemental demos should use a separate naming scheme.
