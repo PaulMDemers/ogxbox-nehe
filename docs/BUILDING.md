@@ -50,7 +50,8 @@ make -C 129_nehe_pb_07_filters_lighting
 The official classic NeHe tutorial sequence ends at lesson 48, and the current
 repository covers that full set. The scaffold helper remains available for
 explicitly named supplemental demos after adding the implementation to
-`common_nehe`:
+`common_nehe`. PBKit scaffolds receive their own local `nehe_lessons.c` copy
+from that template:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\new_nehe_lesson.ps1 -Lesson 49 -Title "Supplemental Demo" -Slug supplemental_demo -UpdateMakefile

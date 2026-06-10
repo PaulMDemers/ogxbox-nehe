@@ -9,6 +9,10 @@ to answer one question quickly: does a visual issue appear only in the NXGL path
 or does it also appear when the same lesson data is drawn directly through the
 native renderer helpers?
 
+Each PBKit lesson builds its own local `nehe_lessons.c` copy. The copies start
+from the shared `common_nehe` template, but are kept in the lesson directories so
+native-renderer fixes and visual baselines can be isolated per lesson.
+
 ## Comparison Workflow
 
 Build matching lesson numbers from both families:

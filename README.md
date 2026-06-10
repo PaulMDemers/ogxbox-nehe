@@ -12,7 +12,8 @@ sequence, lessons 1 through 48:
   checkout.
 - `123_nehe_pb_*` through `134_nehe_pb_*`, then `313_nehe_pb_*` through
   `348_nehe_pb_*`: PBKit/native ports used as a direct renderer comparison and
-  visual baseline.
+  visual baseline. Each PBKit lesson owns its local renderer source so fixes can
+  be made lesson by lesson.
 
 `110_nehe_nxgl_demo_disk` remains as shared source for the NXGL standalone
 lessons, but it is not part of the default release build.

@@ -18,16 +18,18 @@ include $(NXGL_DIR)/nxgl.mk
 ## PBKit Lessons
 
 `123_nehe_pb_*` through `134_nehe_pb_*`, and `313_nehe_pb_*` through
-`348_nehe_pb_*`, render directly through the native PBKit helper layer in
-`common_nehe/`. They are intentionally kept as reference implementations, not
-as a second feature surface. Their job is to provide a native-renderer baseline
-when comparing NXGL behavior against the original Windows NeHe output and xemu
-captures.
+`348_nehe_pb_*`, render directly through the native PBKit helper layer. Each
+lesson owns a local `nehe_lessons.c` copy, while shared helpers, assets, shader
+sources, and capture hooks remain in `common_nehe/`. They are intentionally kept
+as reference implementations, not as a second feature surface. Their job is to
+provide a native-renderer baseline when comparing NXGL behavior against the
+original Windows NeHe output and xemu captures.
 
 ## Shared Code
 
-- `common_nehe/` contains lesson data, native helper code, generated asset
-  headers, capture-time hooks, and shader sources.
+- `common_nehe/` contains the PBKit renderer template plus shared lesson data,
+  native helper code, generated asset headers, capture-time hooks, and shader
+  sources.
 - `common3d/` contains shared shader sources used by the native renderer path.
 - `tools/` contains build, capture, xemu, and comparison helpers.
 
